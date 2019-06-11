@@ -2,7 +2,7 @@
 A Command-line tool which leverages the Tenable.io API to reduce the time it takes to get information that is common 
 during in Cyber Exposure or Vulnerability Management.
 
- ###Important Note
+### Important Note
 Navi Pro will download the entire data-set locally after API keys are 
 entered and commands are run! 
 
@@ -16,7 +16,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
  
  `Navi_pro.py update`
 
-##Instructions
+## Instructions
   * Download Navi_pro.py to your machine
   * Install the required packages
   * Enter in your API keys
@@ -100,7 +100,7 @@ There are five core commands:
   * --docker TEXT --> Report Vulns of CVSS 7 or above by Docker ID
   * --comply TEXT --> Check to see if your container complies with your Policy
 
-###Examples
+### Examples
 `python3 Navi_pro.py report -latest`
 
 `python3 Navi_pro.py report --container 6595894311596786011`
@@ -121,7 +121,7 @@ There are five core commands:
   * -assets --> Assets found in the last 30 days
   * -policies --> Scan Policies
 
-###Examples
+### Examples
 `python3 Navi_pro.py list -scanners`
 
 `python3 Navi_pro.py list -running`
