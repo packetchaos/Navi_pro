@@ -110,16 +110,16 @@ There are five core commands:
 `python3 Navi_pro.py report -comply 6595894311596786011`
 
 ### List - Common Information - 'list'
-  * -scanners    List all of the Scanners
-  * -users       List all of the Groups
-  * -exclusions  List all Exclusions
-  * -containers  List all containers and their Vulnerability  Scores
-  * -logs        List The actor and the action in the log file
-  * -running     List the running Scans
-  * -scans       List all Scans
-  * -nnm         Nessus Network Monitor assets and their vulnerability scores
-  * -assets      Assets found in the last 30 days
-  * -policies    Scan Policies
+  * -scanners --> List all of the Scanners
+  * -users --> List all of the Groups
+  * -exclusions --> List all Exclusions
+  * -containers --> List all containers and their Vulnerability  Scores
+  * -logs --> List The actor and the action in the log file
+  * -running --> List the running Scans
+  * -scans --> List all Scans
+  * -nnm --> Nessus Network Monitor assets and their vulnerability scores
+  * -assets --> Assets found in the last 30 days
+  * -policies --> Scan Policies
 
 ###Examples
 `python3 Navi_pro.py list -scanners`
@@ -127,7 +127,6 @@ There are five core commands:
 `python3 Navi_pro.py list -running`
 
 `python3 Navi_pro.py list -nnm `
-
 
 ## Use Cases
 
