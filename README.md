@@ -121,6 +121,8 @@ There are five core commands:
   * -assets --> Assets found in the last 30 days
   * -policies --> Scan Policies
   * -connectors --> Displays information about the Connectors
+  * -agroup --> Displays information about Access Groups
+  * -status --> Displays Tenable.io License and Site information
 
 ### Examples
 `python3 Navi_pro.py list -scanners`

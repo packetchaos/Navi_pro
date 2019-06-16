@@ -849,7 +849,9 @@ def api(url):
 @click.option('-assets', is_flag=True, help="Assets found in the last 30 days")
 @click.option('-policies', is_flag=True, help="Scan Policies")
 @click.option('-connectors', is_flag=True, help="List Connector Details and Status")
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors):
+@click.option('-agroup', is_flag=True, help="List Access Groups and Status")
+@click.option('-status', is_flag=True, help="Print T.io Status and Account info")
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status):
 
     if scanners:
         nessus_scanners()
@@ -999,6 +1001,55 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         except:
             print("No connectors configured")
 
+    if agroup:
+
+        try:
+            data = get_data('/access-groups')
+            for group in data["access_groups"]:
+                print("\nAccess Group Name: ", group['name'])
+                #For Some reason there is not a Created by record for every Access Group
+                try:
+                    print("Created by: ", group['created_by_name'])
+                except:
+                    pass
+                print("------------------")
+                print("Created at: ", group['created_at'])
+                print("Updated at: ", group['updated_at'])
+                print("----------------------------")
+                print("Current Status: ", group['status'])
+                print("Percent Complete: ", group['processing_percent_complete'])
+                print("------------------------------------------")
+            #pprint.pprint(data)
+        except:
+            print("No Access Groups Configured")
+
+    if status:
+        data = get_data("/server/properties")
+        #pprint.pprint(data)
+        print("\nTenable IO Information")
+        print("-----------------------")
+        print("Container ID :", data["analytics"]["key"])
+        print("Site ID :", data["analytics"]["site_id"])
+        print("Region : ", data["region"])
+
+        print("\nLicense information")
+        print("--------------------")
+        print("Agents Used : ", data["license"]["agents_used"])
+        print("Expiration Date : ", data["license"]["expiration_date"])
+        print("Scanners Used : ", data["license"]["scanners_used"])
+        print("Users : ", data["license"]["users"])
+        print("\nEnabled Apps")
+        print("---------")
+        for key in data["license"]["apps"]:
+            print(key)
+            print("-----")
+            try:
+                print("Expiration: ", data["license"]["apps"][key]["expiration_date"])
+
+            except:
+                pass
+            print("Mode: ", data["license"]["apps"][key]["mode"])
+            print("")
 
 
 
