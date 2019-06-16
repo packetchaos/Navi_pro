@@ -839,7 +839,7 @@ def api(url):
 
 @cli.command(help="Get a List of Scanners, Users, Scans, Assets found in the last 30 days, IP exclusions.  Retreive All containers and Vulnerability Score")
 @click.option('-scanners', is_flag=True, help="List all of the Scanners")
-@click.option('-users', is_flag=True, help="List all of the Groups")
+@click.option('-users', is_flag=True, help="List all of the Users")
 @click.option('-exclusions', is_flag=True, help="List all Exclusions")
 @click.option('-containers', is_flag=True, help="List all containers and their Vulnerability  Scores")
 @click.option('-logs', is_flag=True, help="List The actor and the action in the log file")
@@ -848,7 +848,8 @@ def api(url):
 @click.option('-nnm', is_flag=True, help="Nessus Network Monitor assets and their vulnerability scores")
 @click.option('-assets', is_flag=True, help="Assets found in the last 30 days")
 @click.option('-policies', is_flag=True, help="Scan Policies")
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies):
+@click.option('-connectors', is_flag=True, help="List Connector Details and Status")
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors):
 
     if scanners:
         nessus_scanners()
@@ -981,6 +982,25 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             print('Template ID : ', data['policies'][x]['template_uuid'])
             print()
 
+    if connectors:
+        try:
+            data = get_data('/settings/connectors')
+            #pprint.pprint(data)
+            for conn in data["connectors"]:
+                print("\nConnector Type: ", conn['type'])
+                print("Connector Name: ", conn['name'])
+                print("Connector ID: ", conn['id'])
+                print("----------------------------")
+                print("Schedule: ", conn['schedule']['value'], conn['schedule']['units'])
+                print("Last Sync Time", conn['last_sync_time'])
+                print("---------------")
+                print("Status Message: ",conn['status_message'])
+                print("------------------------------------------")
+        except:
+            print("No connectors configured")
+
+
+
 
 @cli.command(help="Quickly Scan a Target")
 @click.argument('targets')
@@ -1071,6 +1091,22 @@ def spider(csv_input):
         for app in web_apps:
             webscan(app[0], scanner_id, template)
 
+@cli.command(help="Enter in a Mac Address to find the Manufacturer")
+@click.argument('address')
+def mac(address):
+    api_token = "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtYWN2ZW5kb3JzIiwiZXhwIjoxODU3NzYzODQ1LCJpYXQiOjE1NDMyNjc4NDUsImlzcyI6Im1hY3ZlbmRvcnMiLCJqdGkiOiIzYWNiM2Q0YS1lZjQ2LTQ3NWUtYWJiZS05M2NiMDlkMDU5YzIiLCJuYmYiOjE1NDMyNjc4NDQsInN1YiI6Ijk0NyIsInR5cCI6ImFjY2VzcyJ9.a_dLSCJq-KLjOQL52ZgiuDY08_YE5Wl7QhAJpDpHOKoIesGeMRnPGZAx3TgtfwyQVyy6_ozhy447GGdfKyjDXw"
+
+    headers = {'Content-type': 'application/json', 'Authorization': api_token}
+    #mac_address = "b8:27:eb:05:cf:76"
+    url = "https://api.macvendors.com/v1/lookup/"
+
+    r = requests.request('GET', url + address, headers=headers, verify=False)
+    data = r.json()
+    print("Assignment Group:")
+    print(data['data']['assignment'])
+
+    print("\nOrganization name:")
+    print(data['data']['organization_name'])
 
 @cli.command(help="Pause a running Scan")
 @click.argument('Scan_id')

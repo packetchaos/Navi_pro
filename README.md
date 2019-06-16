@@ -111,7 +111,7 @@ There are five core commands:
 
 ### List - Common Information - 'list'
   * -scanners --> List all of the Scanners
-  * -users --> List all of the Groups
+  * -users --> List all of the Users
   * -exclusions --> List all Exclusions
   * -containers --> List all containers and their Vulnerability  Scores
   * -logs --> List The actor and the action in the log file
@@ -120,6 +120,7 @@ There are five core commands:
   * -nnm --> Nessus Network Monitor assets and their vulnerability scores
   * -assets --> Assets found in the last 30 days
   * -policies --> Scan Policies
+  * -connectors --> Displays information about the Connectors
 
 ### Examples
 `python3 Navi_pro.py list -scanners`
@@ -127,6 +128,19 @@ There are five core commands:
 `python3 Navi_pro.py list -running`
 
 `python3 Navi_pro.py list -nnm `
+
+### Group Assets together - 'group'
+  * -pid --> Create Target Group based a plugin ID
+  * -pname --> Create Target Group by Text found in the Plugin Name
+  * -pout TEXT --> Create a Target Group by Text found in the Plugin Output: Must
+              supply Plugin ID
+
+### Examples
+`python3 Navi_pro.py group 19506 -pid`
+
+`python3 Navi_pro.py group Docker -pname`
+
+`python3 Navi_pro.py group 20811 -pout Wireshark`
 
 ## Use Cases
 
