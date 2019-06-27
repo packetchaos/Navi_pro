@@ -51,7 +51,6 @@ There are five core commands:
    * /scans
    * /scanners
    * /users
-   * /groups
 
 ### Examples
 `python3 Navi_pro.py api /scans`
@@ -86,6 +85,7 @@ There are five core commands:
   * -webapp --> Find Web Servers running
   * -creds  --> Find Credential failures
   * --time TEXT --> Find Assets where the scan duration is over X mins
+  * -ghost --> Find Assets found by a Connector and not scanned by Nessus(AWS ONLY)
 
 ### Examples
 `python3 Navi_pro.py find --plugin 19506`
@@ -123,6 +123,7 @@ There are five core commands:
   * -connectors --> Displays information about the Connectors
   * -agroup --> Displays information about Access Groups
   * -status --> Displays Tenable.io License and Site information
+  * -agents --> Displays information on Agents
 
 ### Examples
 `python3 Navi_pro.py list -scanners`
@@ -136,6 +137,7 @@ There are five core commands:
   * -pname --> Create Target Group by Text found in the Plugin Name
   * -pout TEXT --> Create a Target Group by Text found in the Plugin Output: Must
               supply Plugin ID
+  * aws --> Create a target group by AWS assets found by a connector but not scanned.
 
 ### Examples
 `python3 Navi_pro.py group 19506 -pid`
@@ -143,6 +145,8 @@ There are five core commands:
 `python3 Navi_pro.py group Docker -pname`
 
 `python3 Navi_pro.py group 20811 -pout Wireshark`
+
+`python3 Navi_pro.py group aws`
 
 ## Use Cases
 

@@ -9,6 +9,7 @@ import sys
 import json
 import csv
 
+
 requests.packages.urllib3.disable_warnings()
 
 @click.group()
@@ -80,6 +81,28 @@ def get_data(url_mod):
         print("Check your connection...You got a connection error")
     #Trying to catch API errors
 
+def special_get(url_mod,querystring):
+    url = "https://cloud.tenable.com"
+    headers = grab_headers()
+    try:
+        r = requests.request('GET', url + url_mod, headers=headers, params=querystring, verify=False)
+
+        if r.status_code == 200:
+            data = r.json()
+            # print(r.headers)
+            return data
+        elif r.status_code == 404:
+            click.echo('Check your query...')
+            click.echo(r)
+        elif r.status_code == 429:
+            click.echo("Too many requests at a time... Threading is unbound right now.")
+        elif r.status_code == 400:
+            pass
+        else:
+            click.echo("Something went wrong...Don't be trying to hack me now")
+            click.echo(r)
+    except ConnectionError:
+        print("Check your connection...You got a connection error")
 
 def quick_post(url_mod):
     '''
@@ -314,16 +337,16 @@ def create_target_group(tg_name, tg_list):
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
-@click.option('-n', is_flag=True, help='Netstat Established and Listening and Open Ports')
-@click.option('-p', is_flag=True, help='Patch Information')
-@click.option('-t', is_flag=True, help='Trace Route')
-@click.option('-o', is_flag=True, help='Process Information')
-@click.option('-c', is_flag=True, help='Connection Information')
-@click.option('-s', is_flag=True, help='Services Running')
-@click.option('-r', is_flag=True, help='Local Firewall Rules')
-@click.option('-patches', is_flag=True, help='Missing Patches')
+@click.option('-n', is_flag=True, help='Netstat Established(58561) and Listening and Open Ports(14272)')
+@click.option('-p', is_flag=True, help='Patch Information - 66334')
+@click.option('-t', is_flag=True, help='Trace Route - 10287')
+@click.option('-o', is_flag=True, help='Process Information - 70329')
+@click.option('-c', is_flag=True, help='Connection Information - 64582')
+@click.option('-s', is_flag=True, help='Services Running - 22964')
+@click.option('-r', is_flag=True, help='Local Firewall Rules - 56310')
+@click.option('-patches', is_flag=True, help='Missing Patches - 38153')
 @click.option('-d', is_flag=True, help="Scan Detail: 19506 plugin output")
-@click.option('-software', is_flag=True, help="Find software installed on Unix of windows hosts")
+@click.option('-software', is_flag=True, help="Find software installed on Unix(22869) of windows(20811) hosts")
 @click.option('-outbound', is_flag=True, help="outbound connections found by nnm")
 @click.option('-exploit', is_flag=True, help="Display exploitable vulnerabilities")
 @click.option('-critical', is_flag=True, help="Display critical vulnerabilities")
@@ -401,6 +424,8 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
         except IndexError:
                 print("No Software found")
 
+#this needs to be addressed
+
     if outbound:
         with open('tio_vuln_data.txt') as json_file:
             data = json.load(json_file)
@@ -409,7 +434,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
             for x in range(len(data)):
                 if data[x]['asset']['ipv4'] == ipaddr:
 
-                    if data[x]['plugin']['id'] == plugin:
+                    if data[x]['plugin']['id'] == 16:
                         print(data[x]['output'], "   -  ", data[x]['port']['port'], "  - ", data[x]['port']['service'])
                     else:
                         pass
@@ -489,7 +514,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
     if details:
         with open('tio_asset_data.txt') as json_file:
             data = json.load(json_file)
-            # pprint.pprint(data[50])
+            pprint.pprint(data[5])
 
             for x in range(len(data)):
                 try:
@@ -638,6 +663,23 @@ def group(plugin, pid, pname, pout):
         except:
             print("try again")
 
+    if plugin == 'aws':
+        try:
+            query = {"date_range": "30", "filter.0.filter": "sources", "filter.0.quality": "set-hasonly",
+                     "filter.0.value": "AWS"}
+            data = special_get('/workbenches/assets', query)
+
+            for assets in data['assets']:
+
+                ip = assets['ipv4'][0]
+
+                target_list.append(ip)
+
+            #print(target_list)
+            create_target_group("Navi_by_AWS_Connector_info",target_list)
+        except:
+            print("try again")
+
 
 @cli.command(help="Find Containers, Web Apps, Credential failures")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
@@ -645,7 +687,8 @@ def group(plugin, pid, pname, pout):
 @click.option('-webapp', is_flag=True, help="Find Web Servers running")
 @click.option('-creds', is_flag=True, help="Find Credential failures")
 @click.option('--time', default='', help='Find Assets where the scan duration is over X mins')
-def find(plugin, docker, webapp, creds, time):
+@click.option('-ghost', is_flag=True, help='Find Assets that were discovered by a AWS Connector but not scanned')
+def find(plugin, docker, webapp, creds, time, ghost):
 
     if plugin != '':
 
@@ -693,7 +736,7 @@ def find(plugin, docker, webapp, creds, time):
                 if vulns['plugin']['id'] == 19506:
 
                     output = vulns['output']
-
+                    #pprint.pprint(vulns)
                     # split the output by carrage return
                     parsed_output = output.split("\n")
 
@@ -721,10 +764,28 @@ def find(plugin, docker, webapp, creds, time):
                         try:
                             print("Asset IP: ", vulns['asset']['ipv4'])
                             print("Asset UUID: ", vulns['asset']['uuid'])
+                            print("Scan started at: ", vulns['scan']['started_at'])
                             print("Scan completed at: ", vulns['scan']['completed_at'])
+                            print("Scan UUID: ", vulns['scan']['uuid'])
                             print()
                         except:
                             pass
+
+    if ghost:
+
+        query = {"date_range":"30","filter.0.filter":"sources","filter.0.quality":"set-hasonly","filter.0.value":"AWS"}
+        data = special_get('/workbenches/assets',query)
+        print()
+        print("\bSource", "IP", "FQDN", "First seen")
+        print("----------------------------------\b")
+        print()
+        for assets in data['assets']:
+
+            for source in assets['sources']:
+                    if source['name'] == 'AWS':
+                        print(source['name'], assets['ipv4'][0], assets['fqdn'][0], source['first_seen'])
+
+        print()
 
 
 @cli.command(help="Get the Latest Scan information")
@@ -851,7 +912,8 @@ def api(url):
 @click.option('-connectors', is_flag=True, help="List Connector Details and Status")
 @click.option('-agroup', is_flag=True, help="List Access Groups and Status")
 @click.option('-status', is_flag=True, help="Print T.io Status and Account info")
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status):
+@click.option('-agents', is_flag=True, help="Print Agent information")
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents):
 
     if scanners:
         nessus_scanners()
@@ -873,17 +935,12 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             print("No Exclusions Set")
 
     if containers:
-        try:
-            data = get_data('/container-security/api/v1/container/list')
-            print("Container Name : ID : # of Vulns\n")
-            for x in range(len(data)):
-                #print(data[x])
+        data = get_data('/container-security/api/v2/images?limit=1000')
+        print("Container Name : Docker ID : # of Vulns\n")
 
-                print(str(data[x]["name"]) + " : " + str(data[x]["id"]) + " : " + str(
-                    data[x]["number_of_vulnerabilities"]))
-            print()
-        except:
-            print("No containers found")
+        for images in data["items"]:
+
+            print(str(images["name"]) + " : " + str(images["imageHash"]) + " : " + str(images["numberOfVulns"]))
 
     if logs:
         data = get_data('/audit-log/v1/events')
@@ -926,11 +983,11 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             for x in range(len(data['scans'])):
                 name = data['scans'][x]['name']
                 scan_id = data['scans'][x]['id']
-                status = data['scans'][x]['status']
+                scan_status = data['scans'][x]['status']
 
                 print("Scan Name : " + name)
                 print("Scan ID : " + str(scan_id))
-                print("Current status : " + status)
+                print("Current status : " + scan_status)
                 print("-----------------\n")
 
         except:
@@ -1050,6 +1107,32 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                 pass
             print("Mode: ", data["license"]["apps"][key]["mode"])
             print("")
+
+    if agents:
+        data = get_data('/scanners/104490/agents')
+        print("\b Agent information is pulled from the US Cloud Scanner\b")
+        for agent in data['agents']:
+            last_connect = agent['last_connect']
+            last_connect_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_connect))
+
+            last_scanned = agent['last_scanned']
+            last_scanned_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_scanned))
+            print("Agent Name : ", agent['name'])
+            print("-----------------------------")
+            print("\bAgent IP : ", agent['ip'])
+            print("\bLast Connected :", last_connect_time)
+            print("\bLast Scanned : ", last_scanned_time)
+            print("\bAgent Status : ", agent['status'])
+            print()
+            print("\bGroups")
+            print("-------------")
+
+            try:
+                for group in agent['groups']:
+                    print(group['name'])
+            except:
+                pass
+            print()
 
 
 
