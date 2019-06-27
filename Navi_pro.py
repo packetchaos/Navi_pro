@@ -132,6 +132,18 @@ def post_data(url_mod,payload):
     return data
 
 
+def put_data(url_mod,payload):
+    #Set the URL endpoint
+    url = "https://cloud.tenable.com"
+
+    #grab headers for auth
+    headers = grab_headers()
+
+    #send Post request to API endpoint
+    r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
+    #retreive data in json format
+    return
+
 def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 2660000
@@ -319,20 +331,41 @@ def webscan(targets, scanner_id, template):
     return
 
 
+def find_target_group(tg_name):
+    data = get_data('/target-groups')
+    group_id = 0
+    for group in data['target_groups']:
+        try:
+            if group['name'] == tg_name:
+                group_id = group['id']
+
+        except:
+            pass
+    return group_id
+
+
 def create_target_group(tg_name, tg_list):
 
-    #turn the list back into a string seperated by a comma
+    #Check to see if the Target group exists
+    group_id = find_target_group(tg_name)
+    # turn the list back into a string seperated by a comma
     trgstring = ','.join(tg_list)
-
-    print("These are the IPs that will be added to the target Group")
+    print()
+    print("These are the IPs that will be added to the target Group:")
     print(tg_list)
 
-    #create payload
-    payload = dict({"name":tg_name, "members": str(trgstring),"type":"system","acls":[{"type":"default", "permissions":64}]})
-    try:
-        post_data('/target-groups', payload)
-    except:
-        print("An Error Occurred")
+    if group_id != 0:
+        #create Put payload requires a weird string instead of a dict
+        payload = "{\"name\":\"" + tg_name + "\",\"members\":\"" + trgstring + "\",\"type\":\"system\"}"
+        put_data('/target-groups/'+str(group_id), payload)
+    else:
+        print("The Target group doesn't exist")
+        #create payload
+        payload = dict({"name":tg_name, "members": str(trgstring),"type":"system","acls":[{"type":"default", "permissions":64}]})
+        try:
+            post_data('/target-groups', payload)
+        except:
+            print("An Error Occurred")
 
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
