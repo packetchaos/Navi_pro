@@ -29,12 +29,14 @@ Before you begin you need the Keys! The program will continue to error out witho
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
-There are five core commands: 
+There are seven core commands: 
  * api - query api endpoints
  * ip - find details on Specific IPs
  * find - Find information: credential failures, containers, etc
  * report - Report on Information: Latest scan information, Container vulns
  * list - List details: users, logs, etc
+ * group - Create Target groups based off of Plugin ID, Plugin Name or Plugin Output
+ * export - Export Agent or Asset data into a CSV
  
  There are seven single use commands: 
  * scan - Create and lanuch a scan
