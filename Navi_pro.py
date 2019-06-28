@@ -81,6 +81,7 @@ def get_data(url_mod):
         print("Check your connection...You got a connection error")
     #Trying to catch API errors
 
+
 def special_get(url_mod,querystring):
     url = "https://cloud.tenable.com"
     headers = grab_headers()
@@ -103,6 +104,7 @@ def special_get(url_mod,querystring):
             click.echo(r)
     except ConnectionError:
         print("Check your connection...You got a connection error")
+
 
 def quick_post(url_mod):
     '''
@@ -143,6 +145,7 @@ def put_data(url_mod,payload):
     r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
     #retreive data in json format
     return
+
 
 def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
@@ -366,6 +369,110 @@ def create_target_group(tg_name, tg_list):
             post_data('/target-groups', payload)
         except:
             print("An Error Occurred")
+
+
+def csv_export():
+    with open('tio_asset_data.txt') as json_file:
+        data = json.load(json_file)
+
+        #Create our headers - We will Add these two our list in order
+        header_list = ["IP Address", "Hostname", "FQDN", "UUID", "First Found", "Last Found", "Operating System",
+                       "Mac Address", "Tags", "Info", "Low", "Medium", "High", "Critical"]
+
+        #Crete a csv file object
+        with open('asset_data.csv', mode='w') as csv_file:
+            agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
+
+            #write our Header information first
+            agent_writer.writerow(header_list)
+
+            #Loop through each asset
+            for assets in data:
+                #create a blank list to append asset details
+                csv_list = []
+                #Try block to ignore assets without IPs
+                try:
+                    #Capture the first IP
+                    ip = assets['ipv4s'][0]
+                    csv_list.append(ip)
+
+                    #try block to skip if there isn't a hostname
+                    try:
+                        csv_list.append(assets['hostnames'][0])
+
+                    except:
+                        # If there is no hostname add a space so columns still line up
+                        csv_list.append(" ")
+
+                    try:
+                        csv_list.append(assets['fqdns'][0])
+                    except:
+                        csv_list.append(" ")
+
+                    id = assets['id']
+                    csv_list.append(id)
+                    csv_list.append(assets['first_seen'])
+                    csv_list.append(assets['last_seen'])
+                    try:
+                        csv_list.append(assets['operating_systems'][0])
+                    except:
+                        csv_list.append(" ")
+
+                    try:
+                        csv_list.append(assets['mac_addresses'][0])
+                    except:
+                        csv_list.append(" ")
+
+                    try:
+                        csv_list.append(assets['tags'][0]['value'])
+                    except:
+                        csv_list.append(" ")
+
+                    info = get_data('/workbenches/assets/' + id + '/info')
+
+                    for counts in info['info']['counts']['vulnerabilities']['severities']:
+                        count = counts['count']
+                        csv_list.append(count)
+
+                    agent_writer.writerow(csv_list)
+
+                except IndexError:
+                    pass
+
+
+def agent_export():
+    data = get_data('/scanners')
+
+    # get US cloud Scanner ID
+    for scanner in range(len(data['scanners'])):
+        if data['scanners'][scanner]['name'] == 'US Cloud Scanner':
+            scan_id = data['scanners'][scanner]['id']
+
+            # pull agent data from the US cloud Scanner
+            agents = get_data('/scanners/' + str(scan_id) + '/agents')
+
+            with open('agent_data.csv', mode='w') as csv_file:
+                agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
+
+                header_list = ["Agent Name","IP Address","Platform","Last connected", "Last scanned","Status"]
+                agent_writer.writerow(header_list)
+                # cycle through the agents and display the useful information
+                for a in range(len(agents['agents'])):
+                    name = agents['agents'][a]['name']
+                    ip = agents['agents'][a]['ip']
+                    platform = agents['agents'][a]['platform']
+
+                    last_connect = agents['agents'][a]['last_connect']
+                    connect_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_connect))
+
+                    last_scanned = agents['agents'][a]['last_scanned']
+                    scanned_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_scanned))
+
+                    status = agents['agents'][a]['status']
+
+                    agent_writer.writerow([name, ip, platform, connect_time, scanned_time, status])
+    return
+
 
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
@@ -627,6 +734,18 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
                     else:
 
                         pass
+
+@cli.command(help="Export data into a CSV")
+@click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
+@click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
+def export(assets, agents):
+    if assets:
+        print("Exporting your data now.  Saving asset_data.csv now...")
+        print()
+        csv_export()
+
+    if agents:
+        agent_export()
 
 #consider changing the argument to TEXT. Look to see if the length is over that of a Plugin ID and if is a number
 #consider breaking these out into their own top level command

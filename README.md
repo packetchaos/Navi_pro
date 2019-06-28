@@ -1,6 +1,6 @@
 # Navi Pro - The Tenable.io Swiss Army Knife
 A Command-line tool which leverages the Tenable.io API to reduce the time it takes to get information that is common 
-during in Cyber Exposure or Vulnerability Management.
+in Cyber Exposure or Vulnerability Management.
 
 ### Important Note
 Navi Pro will download the entire data-set locally after API keys are 
@@ -147,6 +147,16 @@ There are five core commands:
 `python3 Navi_pro.py group 20811 -pout Wireshark`
 
 `python3 Navi_pro.py group aws`
+
+### Export Asset or Agent Data - 'export'
+
+   * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
+   * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
+
+### Examples
+
+`python3 Navi_pro.py export -assets`
+`python3 Navi_pro.py export -agents`
 
 ## Use Cases
 
