@@ -474,6 +474,57 @@ def agent_export():
     return
 
 
+def webapp_export():
+
+    # Crete a csv file object
+    with open('webapp_data.csv', mode='w') as csv_file:
+        agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
+        # write our Header information first
+        header_list = ["Hostname", "Critical", "High", "Medium", "Low", "Scan Note"]
+        agent_writer.writerow(header_list)
+
+        data = get_data('/scans')
+        #cycle through all of the scans and pull out the webapp scan IDs
+
+        for scans in data['scans']:
+            csv_list = []
+            if scans['type'] == 'webapp':
+                scan_details = get_data('/scans/'+str(scans['id']))
+                try:
+                    hostname = scan_details['hosts'][0]['hostname']
+                except:
+                    hostname = " "
+                try:
+                    message = scan_details['notes'][0]['message']
+                except:
+                    message = " "
+                try:
+                    critical = scan_details['hosts'][0]['critical']
+                except:
+                    critical = 0
+                try:
+                    high = scan_details['hosts'][0]['high']
+                except:
+                    high = 0
+                try:
+                    medium  = scan_details['hosts'][0]['medium']
+                except:
+                    medium = 0
+                try:
+                    low = scan_details['hosts'][0]['low']
+                except:
+                    low = 0
+
+                if message != "Job expired while pending status.":
+                    csv_list.append(hostname)
+
+                    csv_list.append(critical)
+                    csv_list.append(high)
+                    csv_list.append(medium)
+                    csv_list.append(low )
+                    csv_list.append(message)
+                    agent_writer.writerow(csv_list)
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -738,14 +789,22 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 @cli.command(help="Export data into a CSV")
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
-def export(assets, agents):
+@click.option('-webapp', is_flag=True, help="Export Webapp Scan Summary into a CSV")
+def export(assets, agents, webapp):
     if assets:
         print("Exporting your data now.  Saving asset_data.csv now...")
         print()
         csv_export()
 
     if agents:
+        print("Exporting your data now.  Saving agent_data.csv now...")
+        print()
         agent_export()
+
+    if webapp:
+        print("Exporting your data now. Saving webapp_data.csv now...")
+        print()
+        webapp_export()
 
 #consider changing the argument to TEXT. Look to see if the length is over that of a Plugin ID and if is a number
 #consider breaking these out into their own top level command
@@ -945,7 +1004,8 @@ def find(plugin, docker, webapp, creds, time, ghost):
 @click.option('--container', default='', help='Report CVSS 7 or above by Container ID. Use: list -containers to find Containers')
 @click.option('--docker', default='', help='Report CVSS 7 or above by Docker ID')
 @click.option('--comply', default='', help='Check to see if your container complies with your Corporate Policy')
-def report(latest,container,docker,comply):
+@click.option('--webapp', default='', help='Report Scan information by Web App Scan ID')
+def report(latest,container,docker,comply, webapp):
     #get the latest Scan Details
     if latest:
         data = get_data('/scans')
@@ -1040,6 +1100,33 @@ def report(latest,container,docker,comply):
         print("Status : ", data['status'])
         #pprint.pprint(data)
 
+    if webapp:
+
+        data = get_data('/scans/'+str(webapp))
+        try:
+            print()
+            print("Web app Scan Details for : "+ data['hosts'][0]['hostname'])
+            print()
+            print("Notes: \b")
+            print(data['notes'][0]['message'])
+            print()
+            print("Vulnerability Counts")
+            print("--------------------")
+            print("Critical : ", data['hosts'][0]['critical'])
+            print("high : ", data['hosts'][0]['high'])
+            print("medium : ", data['hosts'][0]['medium'])
+            print("low : ", data['hosts'][0]['low'])
+            print()
+            print("Vulnerability Details")
+            print("---------------------")
+            for vulns in data['vulnerabilities']:
+                #pprint.pprint(vulns)
+                print(vulns['plugin_name'], " : ", vulns['count'])
+        except:
+            print("Check the scan ID")
+
+
+
 @cli.command(help="Test the API ex: /scans ")
 @click.argument('url')
 def api(url):
@@ -1065,7 +1152,8 @@ def api(url):
 @click.option('-agroup', is_flag=True, help="List Access Groups and Status")
 @click.option('-status', is_flag=True, help="Print T.io Status and Account info")
 @click.option('-agents', is_flag=True, help="Print Agent information")
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents):
+@click.option('-webapp', is_flag=True, help='Print Web App Scans')
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents, webapp):
 
     if scanners:
         nessus_scanners()
@@ -1285,6 +1373,24 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             except:
                 pass
             print()
+
+    if webapp:
+        try:
+            data = get_data('/scans')
+
+            for scans in data['scans']:
+                if scans['type'] == 'webapp':
+                    name = scans['name']
+                    scan_id = scans['id']
+                    scan_status = scans['status']
+
+                    print("Scan Name : " + name)
+                    print("Scan ID : " + str(scan_id))
+                    print("Current status : " + scan_status)
+                    print("-----------------\n")
+
+        except:
+            print("You may not have access...Check permissions...or Keys")
 
 
 

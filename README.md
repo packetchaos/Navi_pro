@@ -101,6 +101,7 @@ There are seven core commands:
   * --container TEXT --> Report Vulns of CVSS 7 or above by Container ID.
   * --docker TEXT --> Report Vulns of CVSS 7 or above by Docker ID
   * --comply TEXT --> Check to see if your container complies with your Policy
+  * --webapp TEXT --> Report Web app scan information by scan ID
 
 ### Examples
 `python3 Navi_pro.py report -latest`
@@ -126,6 +127,7 @@ There are seven core commands:
   * -agroup --> Displays information about Access Groups
   * -status --> Displays Tenable.io License and Site information
   * -agents --> Displays information on Agents
+  * -webapp --> Displays information on Web app Scans
 
 ### Examples
 `python3 Navi_pro.py list -scanners`
@@ -154,6 +156,7 @@ There are seven core commands:
 
    * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
    * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
+   * -webapp --> Export Web applications into a CSV: FQDN, Critical, High, Medium, Low
 
 ### Examples
 
