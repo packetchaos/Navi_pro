@@ -45,7 +45,9 @@ There are seven core commands:
  * resume - Resume a scan by Scan-ID
  * stop - Stop a scan by Scan-ID
  * spider - Create a WebApp scan for every URL in a CSV
- * update - Update local Export Vuln and Asset data. 
+ * update - Update local Export Vuln and Asset data.
+ * delete - Delete a scan by Scan ID
+ * status - Get the latest status by Scan ID
  
 
 ### Explore the Tenable.io API - 'api'

@@ -82,6 +82,38 @@ def get_data(url_mod):
     #Trying to catch API errors
 
 
+def delete_data(url_mod):
+    '''
+
+    :param url_mod: The URL endpoint. Ex: /scans
+    :return: Response from API in json format
+    '''
+    url = "https://cloud.tenable.com"
+    headers = grab_headers()
+    try:
+        r = requests.request('DELETE', url + url_mod, headers=headers, verify=False)
+
+
+        if r.status_code == 200:
+            r.json()
+            #print(r.headers)
+            return r
+        elif r.status_code == 404:
+            click.echo('Check your query...')
+            click.echo(r)
+        elif r.status_code == 429:
+            click.echo("Too many requests at a time... Threading is unbound right now.")
+        elif r.status_code == 400:
+            pass
+        if r.status_code == 409:
+            click.echo("Scan is still Stopping or not ready to be deleted.  You're gunna have to wait")
+        else:
+            click.echo("Something went wrong...Don't be trying to hack me now")
+            click.echo(r)
+    except ConnectionError:
+        print("Check your connection...You got a connection error")
+
+
 def special_get(url_mod,querystring):
     url = "https://cloud.tenable.com"
     headers = grab_headers()
@@ -525,6 +557,7 @@ def webapp_export():
                     csv_list.append(message)
                     agent_writer.writerow(csv_list)
 
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -786,6 +819,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 
                         pass
 
+
 @cli.command(help="Export data into a CSV")
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
@@ -1020,7 +1054,7 @@ def report(latest,container,docker,comply, webapp):
             # need to identify type to compare against pvs and agent scans
             type = str(data["scans"][x]["type"])
             # don't capture the PVS or Agent data in latest
-            while type not in ['pvs', 'agent', 'webapp']:
+            while type not in ['pvs', 'agent', 'webapp', 'lce']:
                 # put scans in a list to find the latest
                 l.append(epoch_time)
                 # put the time and id into a dictionary
@@ -1136,6 +1170,7 @@ def api(url):
     except:
         click.echo("\nWell this isn't right.  I think you need API keys\n")
         click.echo("Run the keys command to get new API keys\n")
+
 
 @cli.command(help="Get a List of Scanners, Users, Scans, Assets found in the last 30 days, IP exclusions.  Retreive All containers and Vulnerability Score")
 @click.option('-scanners', is_flag=True, help="List all of the Scanners")
@@ -1398,13 +1433,19 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
 @click.argument('targets')
 def scan(targets):
     print("\nChoose your Scan Template")
-    print("1.  Basic")
-    print("2   Discovery Scan")
+    print("1.   Basic Network Scan")
+    print("2.   Discovery Scan")
+    print("3.   Web App Overview")
+    print("4.   Web App Scan")
     option = input("Please enter option #.... ")
     if option == '1':
         template = "731a8e52-3ea6-a291-ec0a-d2ff0619c19d7bd788d6be818b65"
     elif option == '2':
         template = "bbd4f805-3966-d464-b2d1-0079eb89d69708c3a05ec2812bcf"
+    elif option == '3':
+        template = "58323412-d521-9482-2224-bdf5e2d65e6a4c67d33d4322677f"
+    elif option == '4':
+        template = "09805055-a034-4088-8986-aac5e1c57d5f0d44f09d736969bf"
     elif len(option) == 52:
         template = str(option)
     else:
@@ -1438,6 +1479,7 @@ def scan(targets):
     # print Scan UUID
     print("A scan started with UUID: " + data2["scan_uuid"])
     print("The scan ID is " + str(scan))
+
 
 @cli.command(help="Create a Web App scan from a CSV file")
 @click.argument('csv_input')
@@ -1483,6 +1525,7 @@ def spider(csv_input):
         for app in web_apps:
             webscan(app[0], scanner_id, template)
 
+
 @cli.command(help="Enter in a Mac Address to find the Manufacturer")
 @click.argument('address')
 def mac(address):
@@ -1499,6 +1542,7 @@ def mac(address):
 
     print("\nOrganization name:")
     print(data['data']['organization_name'])
+
 
 @cli.command(help="Pause a running Scan")
 @click.argument('Scan_id')
@@ -1580,11 +1624,27 @@ def start(scan_id):
         print("Ahh now you've done it...")
         print("double check your id")
 
+
 @cli.command(help="Update local repository")
 def update():
     vuln_export()
     asset_export()
 
+
+@cli.command(help="Delete a Scan")
+@click.argument('scan_id')
+def delete(scan_id):
+    data = delete_data('/scans/'+str(scan_id))
+    pprint.pprint(data)
+
+
+@cli.command(help="Get Scan Status")
+@click.argument('Scan_id')
+def status(scan_id):
+    data = get_data('/scans/'+str(scan_id)+'/latest-status')
+    print()
+    print("\bLast Status update : "+data['status'])
+    print()
 
 if __name__ == '__main__':
     cli()
