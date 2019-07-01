@@ -83,20 +83,12 @@ def get_data(url_mod):
 
 
 def delete_data(url_mod):
-    '''
-
-    :param url_mod: The URL endpoint. Ex: /scans
-    :return: Response from API in json format
-    '''
     url = "https://cloud.tenable.com"
     headers = grab_headers()
     try:
         r = requests.request('DELETE', url + url_mod, headers=headers, verify=False)
-
-
         if r.status_code == 200:
-            r.json()
-            #print(r.headers)
+            print("Your object was Deleted")
             return r
         elif r.status_code == 404:
             click.echo('Check your query...')
@@ -183,104 +175,108 @@ def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 2660000
     pay_load = {"num_assets": 5000, "filters": {"last_found": int(thirty_days)}}
+    try:
+        # request an export of the data
+        export = post_data("/vulns/export", pay_load)
 
-    # request an export of the data
-    export = post_data("/vulns/export", pay_load)
+        # grab the export UUID
+        ex_uuid = export['export_uuid']
+        print('Requesting Vulnerability Export with ID : ' + ex_uuid)
 
-    # grab the export UUID
-    ex_uuid = export['export_uuid']
-    print('Requesting Vulnerability Export with ID : ' + ex_uuid)
+        # now check the status
+        status = get_data('/vulns/export/' + ex_uuid + '/status')
 
-    # now check the status
-    status = get_data('/vulns/export/' + ex_uuid + '/status')
+        # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
+        print("Status : " + str(status["status"]))
 
-    # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
-    print("Status : " + str(status["status"]))
+        #set a variable to True for our While loop
+        not_ready = True
 
-    #set a variable to True for our While loop
-    not_ready = True
+        #loop to check status until finished
+        while not_ready is True:
+            #Pull the status, then pause 5 seconds and ask again.
+            if status['status'] == 'PROCESSING' or 'QUEUED':
+                time.sleep(5)
+                status = get_data('/vulns/export/' + ex_uuid + '/status')
+                print("Status : " + str(status["status"]))
 
-    #loop to check status until finished
-    while not_ready is True:
-        #Pull the status, then pause 5 seconds and ask again.
-        if status['status'] == 'PROCESSING' or 'QUEUED':
-            time.sleep(5)
-            status = get_data('/vulns/export/' + ex_uuid + '/status')
-            print("Status : " + str(status["status"]))
+            #Exit Loop once confirmed finished
+            if status['status'] == 'FINISHED':
+                not_ready = False
 
-        #Exit Loop once confirmed finished
-        if status['status'] == 'FINISHED':
-            not_ready = False
-
-        #Tell the user an error occured
-        if status['status'] == 'ERROR':
-            print("Error occurred")
+            #Tell the user an error occured
+            if status['status'] == 'ERROR':
+                print("Error occurred")
 
 
-    #create an empty list to put all of our data into.
-    data = []
+        #create an empty list to put all of our data into.
+        data = []
 
-    #loop through all of the chunks
-    for x in range(len(status['chunks_available'])):
-        chunk_data = get_data('/vulns/export/' + ex_uuid + '/chunks/' + str(x+1))
-        data.append(chunk_data)
+        #loop through all of the chunks
+        for x in range(len(status['chunks_available'])):
+            chunk_data = get_data('/vulns/export/' + ex_uuid + '/chunks/' + str(x+1))
+            data.append(chunk_data)
 
-        with open('tio_vuln_data.txt', 'w') as json_outfile:
-            json.dump(chunk_data, json_outfile)
+            with open('tio_vuln_data.txt', 'w') as json_outfile:
+                json.dump(chunk_data, json_outfile)
 
-            json_outfile.close()
+                json_outfile.close()
+    except KeyError:
+        print("Well this is a bummer; you don't have permissions to download Vuln data :( ")
 
 
 def asset_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 2660000
     pay_load = {"chunk_size": 5000, "filters": {"last_assessed": int(thirty_days)}}
+    try:
+        # request an export of the data
+        export = post_data("/assets/export", pay_load)
 
-    # request an export of the data
-    export = post_data("/assets/export", pay_load)
+        # grab the export UUID
+        ex_uuid = export['export_uuid']
+        print('Requesting Asset Export with ID : ' + ex_uuid)
 
-    # grab the export UUID
-    ex_uuid = export['export_uuid']
-    print('Requesting Asset Export with ID : ' + ex_uuid)
+        # now check the status
+        status = get_data('/assets/export/' + ex_uuid + '/status')
 
-    # now check the status
-    status = get_data('/assets/export/' + ex_uuid + '/status')
+        # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
+        print("Status : " + str(status["status"]))
 
-    # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
-    print("Status : " + str(status["status"]))
+        # set a variable to True for our While loop
+        not_ready = True
 
-    # set a variable to True for our While loop
-    not_ready = True
+        # loop to check status until finished
+        while not_ready is True:
+            # Pull the status, then pause 5 seconds and ask again.
+            if status['status'] == 'PROCESSING' or 'QUEUED':
+                time.sleep(5)
+                status = get_data('/assets/export/' + ex_uuid + '/status')
+                print("Status : " + str(status["status"]))
 
-    # loop to check status until finished
-    while not_ready is True:
-        # Pull the status, then pause 5 seconds and ask again.
-        if status['status'] == 'PROCESSING' or 'QUEUED':
-            time.sleep(5)
-            status = get_data('/assets/export/' + ex_uuid + '/status')
-            print("Status : " + str(status["status"]))
+            # Exit Loop once confirmed finished
+            if status['status'] == 'FINISHED':
+                not_ready = False
 
-        # Exit Loop once confirmed finished
-        if status['status'] == 'FINISHED':
-            not_ready = False
-
-        # Tell the user an error occured
-        if status['status'] == 'ERROR':
-            print("Error occurred")
+            # Tell the user an error occured
+            if status['status'] == 'ERROR':
+                print("Error occurred")
 
 
-    # create an empty list to put all of our data into.
-    data = []
+        # create an empty list to put all of our data into.
+        data = []
 
-    # loop through all of the chunks
-    for x in range(len(status['chunks_available'])):
-        chunk_data = get_data('/assets/export/' + ex_uuid + '/chunks/' + str(x+1))
-        data.append(chunk_data)
+        # loop through all of the chunks
+        for x in range(len(status['chunks_available'])):
+            chunk_data = get_data('/assets/export/' + ex_uuid + '/chunks/' + str(x+1))
+            data.append(chunk_data)
 
-        with open('tio_asset_data.txt', 'w') as json_outfile:
-            json.dump(chunk_data, json_outfile)
+            with open('tio_asset_data.txt', 'w') as json_outfile:
+                json.dump(chunk_data, json_outfile)
 
-            json_outfile.close()
+                json_outfile.close()
+    except KeyError:
+        print("Well this is a bummer; you don't have permissions to download Asset data :( ")
 
 
 def plugin_by_ip(cmd,plugin):
@@ -558,6 +554,35 @@ def webapp_export():
                     agent_writer.writerow(csv_list)
 
 
+def scan_details(uuid):
+    # pull the scan data
+    details = get_data('/scans/' + str(uuid))
+
+    # pprint.pprint(details)
+
+    print("\nThe Scanner name is : " + str(details["info"]['scanner_name']))
+    print("\nThe Name of the scan is " + str(details["info"]["name"]))
+    print("The " + str(details["info"]["hostcount"]) + " host(s) that were scanned are below :\n")
+    for x in range(len(details["hosts"])):
+        print(details["hosts"][x]["hostname"])
+
+    start = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_start"]))
+    print("\nscan start : " + start)
+    try:
+        stop = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_end"]))
+        print("scan finish : " + stop)
+
+        duration = (details["info"]["scan_end"] - details["info"]["scan_start"]) / 60
+        print("Duration : " + str(duration) + " Minutes")
+    except:
+        print("This scan is still running")
+    print("Scan Notes Below : ")
+    for x in range(len(details["notes"])):
+        print("         " + details["notes"][x]["title"])
+        print("         " + details["notes"][x]["message"] + "\n")
+    return
+
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -738,7 +763,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
     if details:
         with open('tio_asset_data.txt') as json_file:
             data = json.load(json_file)
-            pprint.pprint(data[5])
+            #pprint.pprint(data[5])
 
             for x in range(len(data)):
                 try:
@@ -926,7 +951,7 @@ def group(plugin, pid, pname, pout):
             print("try again")
 
 
-@cli.command(help="Find Containers, Web Apps, Credential failures")
+@cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
 @click.option('-docker', is_flag=True, help="Find Running Docker Containers")
 @click.option('-webapp', is_flag=True, help="Find Web Servers running")
@@ -947,7 +972,7 @@ def find(plugin, docker, webapp, creds, time, ghost):
         find_by_plugin(str(93561))
 
     if webapp:
-        print("Searching for Web Servers running...\n")
+        print("Searching for Web Servers found by NNM...\n")
         with open('tio_vuln_data.txt') as json_file:
             data = json.load(json_file)
 
@@ -1038,8 +1063,9 @@ def find(plugin, docker, webapp, creds, time, ghost):
 @click.option('--container', default='', help='Report CVSS 7 or above by Container ID. Use: list -containers to find Containers')
 @click.option('--docker', default='', help='Report CVSS 7 or above by Docker ID')
 @click.option('--comply', default='', help='Check to see if your container complies with your Corporate Policy')
-@click.option('--webapp', default='', help='Report Scan information by Web App Scan ID')
-def report(latest,container,docker,comply, webapp):
+@click.option('--details', default='', help='Report Scan Details including Vulnerability Counts by Scan ID')
+@click.option('--summary', default='', help="Report Scan Summary information by Scan ID")
+def report(latest,container,docker,comply, details, summary):
     #get the latest Scan Details
     if latest:
         data = get_data('/scans')
@@ -1069,33 +1095,12 @@ def report(latest,container,docker,comply, webapp):
 
         # turn epoch time into something readable
         epock_latest = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(grab_time))
-
-        # pull the scan data
-        details = get_data('/scans/' + str(grab_uuid))
         print("\nThe last Scan run was at " + epock_latest)
-        print("\nThe Scanner name is : " + str(details["info"]['scanner_name']))
-        print("\nThe Name of the scan is " + str(details["info"]["name"]))
-        print("The " + str(details["info"]["hostcount"]) + " host(s) that were scanned are below :\n")
-        for x in range(len(details["hosts"])):
-            print(details["hosts"][x]["hostname"])
-
-        start = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_start"]))
-        print("\nscan start : " + start)
-        try:
-            stop = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_end"]))
-            print("scan finish : " + stop)
-
-            duration = (details["info"]["scan_end"] - details["info"]["scan_start"]) / 60
-            print("Duration : " + str(duration) + " Minutes")
-        except:
-            print("This scan is still running")
-        print("Scan Notes Below : ")
-        for x in range(len(details["notes"])):
-            print("         " + details["notes"][x]["title"])
-            print("         " + details["notes"][x]["message"] + "\n")
+        scan_details(str(grab_uuid))
 
     if container:
-        data = get_data('/container-security/api/v1/reports/show?container_id='+str(container))
+        querystring = {"image_id": str(container)}
+        data = special_get('/container-security/api/v1/reports/by_image', querystring)
 
         try:
             for vulns in data['findings']:
@@ -1134,15 +1139,18 @@ def report(latest,container,docker,comply, webapp):
         print("Status : ", data['status'])
         #pprint.pprint(data)
 
-    if webapp:
+    if details:
 
-        data = get_data('/scans/'+str(webapp))
+        data = get_data('/scans/'+str(details))
         try:
             print()
-            print("Web app Scan Details for : "+ data['hosts'][0]['hostname'])
+            print("Scan Details for Scan ID : "+details)
             print()
             print("Notes: \b")
-            print(data['notes'][0]['message'])
+            try:
+                print(data['notes'][0]['message'])
+            except:
+                pass
             print()
             print("Vulnerability Counts")
             print("--------------------")
@@ -1153,11 +1161,17 @@ def report(latest,container,docker,comply, webapp):
             print()
             print("Vulnerability Details")
             print("---------------------")
+
             for vulns in data['vulnerabilities']:
-                #pprint.pprint(vulns)
-                print(vulns['plugin_name'], " : ", vulns['count'])
+                if vulns['severity'] != 0:
+                    print(vulns['plugin_name'], " : ", vulns['count'])
         except:
             print("Check the scan ID")
+
+    if summary:
+        print("\nHere is the Summary of your Scan :")
+        print("----------------------------------")
+        scan_details(str(summary))
 
 
 
@@ -1188,7 +1202,8 @@ def api(url):
 @click.option('-status', is_flag=True, help="Print T.io Status and Account info")
 @click.option('-agents', is_flag=True, help="Print Agent information")
 @click.option('-webapp', is_flag=True, help='Print Web App Scans')
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents, webapp):
+@click.option('-tgroup', is_flag=True, help='Print Target Groups')
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents, webapp, tgroup):
 
     if scanners:
         nessus_scanners()
@@ -1339,19 +1354,25 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             data = get_data('/access-groups')
             for group in data["access_groups"]:
                 print("\nAccess Group Name: ", group['name'])
+                print("Access Group ID: ", group['id'])
                 #For Some reason there is not a Created by record for every Access Group
                 try:
                     print("Created by: ", group['created_by_name'])
                 except:
                     pass
-                print("------------------")
+                print("---------")
                 print("Created at: ", group['created_at'])
                 print("Updated at: ", group['updated_at'])
-                print("----------------------------")
+                print("----------------------")
                 print("Current Status: ", group['status'])
                 print("Percent Complete: ", group['processing_percent_complete'])
-                print("------------------------------------------")
-            #pprint.pprint(data)
+                print("---------------------------------")
+                print("Rules")
+                print("-----------------------------------------")
+                details = get_data('/access-groups/'+str(group['id']))
+                for rule in details['rules']:
+                    print(rule['type'], rule['operator'], rule['terms'])
+                print()
         except:
             print("No Access Groups Configured")
 
@@ -1372,6 +1393,7 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         print("Users : ", data["license"]["users"])
         print("\nEnabled Apps")
         print("---------")
+        print()
         for key in data["license"]["apps"]:
             print(key)
             print("-----")
@@ -1381,7 +1403,7 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             except:
                 pass
             print("Mode: ", data["license"]["apps"][key]["mode"])
-            print("")
+            print()
 
     if agents:
         data = get_data('/scanners/104490/agents')
@@ -1427,6 +1449,18 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         except:
             print("You may not have access...Check permissions...or Keys")
 
+    if tgroup:
+        data = get_data('/target-groups')
+        try:
+            for group in data['target_groups']:
+                print()
+                print("Name : ", group['name'])
+                print("Owner : ", group['owner'])
+                print("Target Group ID : ", group['id'])
+                print("Members : ", group['members'])
+                print()
+        except:
+            print("You may not have Target Groups or permissions")
 
 
 @cli.command(help="Quickly Scan a Target")
@@ -1631,11 +1665,25 @@ def update():
     asset_export()
 
 
-@cli.command(help="Delete a Scan")
-@click.argument('scan_id')
-def delete(scan_id):
-    data = delete_data('/scans/'+str(scan_id))
-    pprint.pprint(data)
+@cli.command(help="Delete an Object by it's ID")
+@click.argument('id')
+@click.option('-scan', is_flag=True, help='Delete a Scan by Scan ID')
+@click.option('-agroup', is_flag=True, help='Delete an access group by access group ID')
+@click.option('-tgroup', is_flag=True, help='Delete a target-group by target-group ID')
+def delete(id, scan, agroup, tgroup):
+
+    if scan:
+        print("I'm deleting your Scan Now")
+        delete_data('/scans/'+str(id))
+
+    if agroup:
+        print("I'm deleting your Access Group Now")
+        delete_data(('/access-groups/'+str(id)))
+
+    if tgroup:
+        print("I'm deleting your Target group Now")
+        delete_data(('/target-groups/'+str(id)))
+
 
 
 @cli.command(help="Get Scan Status")

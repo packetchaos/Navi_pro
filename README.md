@@ -1,10 +1,10 @@
 # Navi Pro - The Tenable.io Swiss Army Knife
-A Command-line tool which leverages the Tenable.io API to reduce the time it takes to get information that is common 
+A command-line tool which leverages the Tenable.io API to reduce the time it takes to get information that is common 
 in Cyber Exposure or Vulnerability Management.
 
 ### Important Note
 Navi Pro will download the entire data-set locally after API keys are 
-entered and commands are run! 
+entered and commands are run! To download Vuln and Asset data you have to be an Administrator.
 
 All Vulns and All Assets are downloaded into two txt files in json format:
  **tio_asset_data.txt** and **tio_vuln_data.txt**.  
@@ -14,12 +14,13 @@ All Vulns and All Assets are downloaded into two txt files in json format:
  
  The data will not be updated until you run the update command.
  
- `Navi_pro.py update`
+ `python3 Navi_pro.py update`
 
 ## Instructions
   * Download Navi_pro.py to your machine
   * Install the required packages
-  * Enter in your API keys
+  * Enter in your API keys  :
+  `python3 Navi_pro.py keys`
 
   
 ## Usage
@@ -38,7 +39,7 @@ There are seven core commands:
  * group - Create Target groups based off of Plugin ID, Plugin Name or Plugin Output
  * export - Export Agent or Asset data into a CSV
  
- There are seven single use commands: 
+ There are ten single use commands: 
  * scan - Create and lanuch a scan
  * start - Start a scan by Scan-ID
  * pause - Pause a scan by Scan-ID
@@ -48,6 +49,7 @@ There are seven core commands:
  * update - Update local Export Vuln and Asset data.
  * delete - Delete a scan by Scan ID
  * status - Get the latest status by Scan ID
+ * mac - Get the manufacture by Mac Address
  
 
 ### Explore the Tenable.io API - 'api'
@@ -103,16 +105,19 @@ There are seven core commands:
   * --container TEXT --> Report Vulns of CVSS 7 or above by Container ID.
   * --docker TEXT --> Report Vulns of CVSS 7 or above by Docker ID
   * --comply TEXT --> Check to see if your container complies with your Policy
-  * --webapp TEXT --> Report Web app scan information by scan ID
+  * --details TEXT --> Report Scan Details including Vulnerability Counts by Scan ID
+  * --summary TEXT --> Report Scan Summary by Scan ID
 
 ### Examples
 `python3 Navi_pro.py report -latest`
 
-`python3 Navi_pro.py report --container 6595894311596786011`
+`python3 Navi_pro.py report --container 48b5124b2768`
 
 `python3 Navi_pro.py report --docker 48b5124b2768`
 
-`python3 Navi_pro.py report -comply 6595894311596786011`
+`python3 Navi_pro.py report -comply 48b5124b2768`
+
+`pyton3 Navi_pro.py report --summary 13`
 
 ### List - Common Information - 'list'
   * -scanners --> List all of the Scanners
@@ -154,7 +159,7 @@ There are seven core commands:
 
 `python3 Navi_pro.py group aws`
 
-### Export Asset or Agent Data - 'export'
+### Export Asset, Agent, or Webapp Data - 'export'
 
    * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
    * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
