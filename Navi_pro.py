@@ -12,9 +12,11 @@ import csv
 
 requests.packages.urllib3.disable_warnings()
 
+
 @click.group()
 def cli():
     click.echo("Hey Listen!")
+
 
 @cli.command(help="Enter or Reset your Keys")
 def keys():
@@ -554,6 +556,21 @@ def webapp_export():
                     agent_writer.writerow(csv_list)
 
 
+def consec_export():
+    data = get_data('/container-security/api/v2/images?limit=1000')
+    with open('consec_data.csv', mode='w') as csv_file:
+        agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
+
+        header_list = ["Container Name", "Docker ID", "# of Vulns"]
+        agent_writer.writerow(header_list)
+
+        for images in data["items"]:
+            name = images["name"]
+            docker_id = images["imageHash"]
+            vulns = images["numberOfVulns"]
+            agent_writer.writerow([name, docker_id, vulns])
+
+
 def scan_details(uuid):
     # pull the scan data
     details = get_data('/scans/' + str(uuid))
@@ -825,10 +842,24 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
                         except:
                             pass
 
+                        try:
+                            print("\nVulnerability Counts")
+                            print("--------------")
+                            asset_info = get_data('/workbenches/assets/'+id+'/info')
+
+
+                            for vuln in asset_info['info']['counts']['vulnerabilities']['severities']:
+                                print(vuln["name"]," : ", vuln["count"])
+
+                            print("\nExposure Score : ", asset_info['info']['exposure_score'])
+                        except:
+                            pass
+
                         print("\nLast Authenticated Scan Date - ", data[x]['last_authenticated_scan_date'])
 
                 except:
                     pass
+
         # We want the Scan template ID to do a quick re-scan.
         with open('tio_vuln_data.txt') as vuln_file:
             vulndata = json.load(vuln_file)
@@ -849,7 +880,8 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
 @click.option('-webapp', is_flag=True, help="Export Webapp Scan Summary into a CSV")
-def export(assets, agents, webapp):
+@click.option('-consec', is_flag=True, help="Export Container Security Summary into a CSV")
+def export(assets, agents, webapp, consec):
     if assets:
         print("Exporting your data now.  Saving asset_data.csv now...")
         print()
@@ -864,6 +896,11 @@ def export(assets, agents, webapp):
         print("Exporting your data now. Saving webapp_data.csv now...")
         print()
         webapp_export()
+
+    if consec:
+        print("Exporting your data now. Saving consec_data.csv now...")
+        print()
+        consec_export()
 
 #consider changing the argument to TEXT. Look to see if the length is over that of a Plugin ID and if is a number
 #consider breaking these out into their own top level command
@@ -1158,6 +1195,12 @@ def report(latest,container,docker,comply, details, summary):
             print("high : ", data['hosts'][0]['high'])
             print("medium : ", data['hosts'][0]['medium'])
             print("low : ", data['hosts'][0]['low'])
+            try:
+                print("--------------")
+                print("Score : ", data['hosts'][0]['score'])
+            except:
+                pass
+            #pprint.pprint(data['hosts'])
             print()
             print("Vulnerability Details")
             print("---------------------")
@@ -1172,7 +1215,6 @@ def report(latest,container,docker,comply, details, summary):
         print("\nHere is the Summary of your Scan :")
         print("----------------------------------")
         scan_details(str(summary))
-
 
 
 @cli.command(help="Test the API ex: /scans ")
@@ -1514,7 +1556,6 @@ def scan(targets):
     print("A scan started with UUID: " + data2["scan_uuid"])
     print("The scan ID is " + str(scan))
 
-
 @cli.command(help="Create a Web App scan from a CSV file")
 @click.argument('csv_input')
 def spider(csv_input):
@@ -1685,7 +1726,6 @@ def delete(id, scan, agroup, tgroup):
         delete_data(('/target-groups/'+str(id)))
 
 
-
 @cli.command(help="Get Scan Status")
 @click.argument('Scan_id')
 def status(scan_id):
@@ -1693,6 +1733,48 @@ def status(scan_id):
     print()
     print("\bLast Status update : "+data['status'])
     print()
+
+@cli.command()
+@click.argument('ip', nargs=1)
+@click.argument('mac', nargs=1)
+@click.argument('netbios', nargs=1)
+@click.argument('fqdn', nargs=1)
+def add(ip, mac, netbios, fqdn):
+    asset = {}
+    ipv4 = []
+    macs = []
+    netbioss = []
+    fqdns = []
+    if ip:
+        ipv4.append(ip)
+        asset["ip_address"] = ipv4
+
+    if mac:
+        macs.append(mac)
+        asset["mac_address"] = macs
+
+    if netbios:
+        netbioss.append(netbios)
+        asset["netbios_name"] = netbioss
+
+    if fqdn:
+        fqdns.append(fqdn)
+        asset["fqdn"] =fqdns
+
+
+    print(asset)
+    #payload =  "{\"assets\":[{\"mac_address\":[\"test\"],\"ip_address\":[\"testing\"]}]}"
+    payload = {"assets":[asset],"source":"navi"}
+    print(payload)
+    payload2 = "{\"assets\":[{\"mac_address\":[\"01:02:03:04:05\"],\"netbios_name\":\"Navitest\",\"fqdn\":[\"thisisatest.com\"],\"ip_address\":[\"1.1.1.1\"]}],\"source\":\"navi\"}"
+    print(payload2)
+    #r = requests.post('https://cloud.tenable.com/import/assets', data=payload, headers=grab_headers())
+    #data = post_data('/import/assets',payload)
+    #data = r.json()
+    #pprint.pprint(data)
+
+
+
 
 if __name__ == '__main__':
     cli()

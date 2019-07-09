@@ -164,6 +164,7 @@ There are seven core commands:
    * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
    * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
    * -webapp --> Export Web applications into a CSV: FQDN, Critical, High, Medium, Low
+   * -consec --> Export Container Security summary info into a CSV.
 
 ### Examples
 
