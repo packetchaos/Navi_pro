@@ -30,7 +30,7 @@ Before you begin you need the Keys! The program will continue to error out witho
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
-There are seven core commands: 
+There are nine core commands: 
  * api - query api endpoints
  * ip - find details on Specific IPs
  * find - Find information: credential failures, containers, etc
@@ -38,6 +38,8 @@ There are seven core commands:
  * list - List details: users, logs, etc
  * group - Create Target groups based off of Plugin ID, Plugin Name or Plugin Output
  * export - Export Agent or Asset data into a CSV
+ * delete - Delete an object by it's ID
+ * mail - Mail a report 
  
  There are ten single use commands: 
  * scan - Create and lanuch a scan
@@ -135,6 +137,7 @@ There are seven core commands:
   * -status --> Displays Tenable.io License and Site information
   * -agents --> Displays information on Agents
   * -webapp --> Displays information on Web app Scans
+  * -tgroup --> Displays information about Target Groups
 
 ### Examples
 `python3 Navi_pro.py list -scanners`
@@ -170,6 +173,29 @@ There are seven core commands:
 
 `python3 Navi_pro.py export -assets`
 `python3 Navi_pro.py export -agents`
+
+### Delete an Object by an ID
+* scan - Delete a scan by ID
+* agroup - Delete an Access group
+* tgroup - Delete a Target Group
+* policy - Delete a Policy
+* asset - Delete an asset
+
+`python3 Navi_pro.py delete 1234 -scan`
+
+`python3 Navi_pro.py delete 4567 -agroup`
+
+`python3 Navi_pro.py delete 8910 -tgroup`
+
+`python3 Navi_pro.py delete 12345 -asset`
+
+`python3 Navi_pro.py delete 6789 -policy`
+
+### Mail a Report
+* latest - Mail a report of the latest scan: Same output as "report -latest"
+* consec - Mail a report of the ConSec Summary: Same output as "list -containers"
+* webapp - Mail a report of the WebApp Summary
+
 
 ## Use Cases
 
@@ -208,4 +234,5 @@ There are seven core commands:
 * Choose your scanner: A list will be displayed
 * Scans will be created but not started.
 * An output of the Webapp URL and Scan ID will be displayed on completion
+
 

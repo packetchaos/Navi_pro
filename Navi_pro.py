@@ -8,6 +8,7 @@ import pickle
 import sys
 import json
 import csv
+import smtplib
 
 
 requests.packages.urllib3.disable_warnings()
@@ -33,6 +34,38 @@ def keys():
 
     print("Now you have keys, re-run your command")
     sys.exit()
+
+
+def smtp():
+
+    if os.path.isfile('./smtp.pickle') is False:
+        print("Hey you don't have any SMTP information!")
+
+        server = input("Enter the Email servers address : ")
+        port = input("Enter the port your Email server uses : ")
+        from_email = input("Enter your Email Address : ")
+        password = input("Enter your email password : ")
+
+        dicts = {"Server": server, "Port": port, "From Email": from_email, "Password": password}
+
+        pickle_out = open("smtp.pickle", "wb")
+        pickle.dump(dicts, pickle_out)
+        pickle_out.close()
+
+        print("Your SMTP settings have been saved")
+        print(dicts)
+        return server, port, from_email, password
+
+
+    else:
+        pickle_in = open("smtp.pickle", "rb")
+        smtp_info = pickle.load(pickle_in)
+        server = smtp_info["Server"]
+        port = smtp_info["Port"]
+        from_email = smtp_info["From Email"]
+        password = smtp_info["Password"]
+
+        return server, port, from_email, password
 
 
 def grab_headers():
@@ -90,6 +123,9 @@ def delete_data(url_mod):
     try:
         r = requests.request('DELETE', url + url_mod, headers=headers, verify=False)
         if r.status_code == 200:
+            print("Your object was Deleted")
+            return r
+        elif r.status_code == 202:
             print("Your object was Deleted")
             return r
         elif r.status_code == 404:
@@ -600,6 +636,22 @@ def scan_details(uuid):
     return
 
 
+def send_email(from_email, to_email, msg, mail_server, password, port):
+    print(msg)
+    try:
+        server = smtplib.SMTP(mail_server, port)
+        server.ehlo()
+        server.starttls()
+        server.login(from_email, password)
+        server.sendmail(from_email, to_email, msg)
+        server.close()
+
+        print('Email sent!')
+    except Exception as E:
+        print(E)
+        print('Something went wrong...')
+
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -908,7 +960,7 @@ def export(assets, agents, webapp, consec):
 @click.argument('plugin')
 @click.option('-pid', is_flag=True, help='Create Target Group based a plugin ID')
 @click.option('-pname', is_flag=True, help='Create Target Group by Text found in the Plugin Name')
-@click.option('-pout', default='', help='Create a Target Group by Text found in the Plugin Output: Must supply Plugin ID')
+@click.option('--pout', default='', help='Create a Target Group by Text found in the Plugin Output: Must supply Plugin ID first')
 def group(plugin, pid, pname, pout):
     target_list = []
     if pid:
@@ -1032,7 +1084,7 @@ def find(plugin, docker, webapp, creds, time, ghost):
         print("I'm looking for credential issues...Please hang tight")
         find_by_plugin(str(104410))
 
-    if time !='':
+    if time != '':
         with open('tio_vuln_data.txt') as json_file:
             data = json.load(json_file)
 
@@ -1138,6 +1190,7 @@ def report(latest,container,docker,comply, details, summary):
     if container:
         querystring = {"image_id": str(container)}
         data = special_get('/container-security/api/v1/reports/by_image', querystring)
+        #pprint.pprint(data)
 
         try:
             for vulns in data['findings']:
@@ -1145,7 +1198,7 @@ def report(latest,container,docker,comply, details, summary):
                     print("CVE ID :", vulns['nvdFinding']['cve'])
                     print("CVSS Score : ",vulns['nvdFinding']['cvss_score'])
                     print("--------------------------------------------------")
-                    print("Description : ", vulns['nvdFinding']['modified_date'])
+                    print("Description : ", vulns['nvdFinding']['description'])
                     print("\nRemediation :", vulns['nvdFinding']['remediation'])
                     print("----------------------END-------------------------\n")
         except(TypeError):
@@ -1162,7 +1215,7 @@ def report(latest,container,docker,comply, details, summary):
                     print("CVE ID :", vulns['nvdFinding']['cve'])
                     print("CVSS Score : ",vulns['nvdFinding']['cvss_score'])
                     print("--------------------------------------------------")
-                    print("Description : ", vulns['nvdFinding']['modified_date'])
+                    print("Description : ", vulns['nvdFinding']['description'])
                     print("\nRemediation :", vulns['nvdFinding']['remediation'])
                     print("----------------------END-------------------------\n")
         except(TypeError):
@@ -1298,11 +1351,11 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                     run = run + 1
                     name = data['scans'][x]['name']
                     scan_id = data['scans'][x]['id']
-                    status = data['scans'][x]['status']
+                    current_status = data['scans'][x]['status']
 
                     click.echo("Scan Name : " + name)
                     print("Scan ID : " + str(scan_id))
-                    print("Current status : " + status)
+                    print("Current status : " + current_status)
             if run == 0:
                 print("No running scans")
         except:
@@ -1530,6 +1583,7 @@ def scan(targets):
 
     print("Here are the available scanners")
     print("Remember, don't pick a Cloud scanner for an internal IP address")
+    print("Remember also, don't chose a Webapp scanner for an IP address")
     nessus_scanners()
     scanner_id = input("What scanner do you want to scan with ?.... ")
 
@@ -1555,6 +1609,7 @@ def scan(targets):
     # print Scan UUID
     print("A scan started with UUID: " + data2["scan_uuid"])
     print("The scan ID is " + str(scan))
+
 
 @cli.command(help="Create a Web App scan from a CSV file")
 @click.argument('csv_input')
@@ -1711,7 +1766,9 @@ def update():
 @click.option('-scan', is_flag=True, help='Delete a Scan by Scan ID')
 @click.option('-agroup', is_flag=True, help='Delete an access group by access group ID')
 @click.option('-tgroup', is_flag=True, help='Delete a target-group by target-group ID')
-def delete(id, scan, agroup, tgroup):
+@click.option('-policy', is_flag=True, help='Delete a Policy by Policy ID')
+@click.option('-asset', is_flag=True, help='Delete an Asset by Asset UUID')
+def delete(id, scan, agroup, tgroup, policy, asset):
 
     if scan:
         print("I'm deleting your Scan Now")
@@ -1725,6 +1782,14 @@ def delete(id, scan, agroup, tgroup):
         print("I'm deleting your Target group Now")
         delete_data(('/target-groups/'+str(id)))
 
+    if policy:
+        print("I'm deleting your Policy Now")
+        delete_data(('/policies/' + str(id)))
+
+    if asset:
+        print("I'm deleting your asset Now")
+        delete_data('/workbenches/assets/' + str(id))
+
 
 @cli.command(help="Get Scan Status")
 @click.argument('Scan_id')
@@ -1734,17 +1799,19 @@ def status(scan_id):
     print("\bLast Status update : "+data['status'])
     print()
 
-@cli.command()
-@click.argument('ip', nargs=1)
-@click.argument('mac', nargs=1)
-@click.argument('netbios', nargs=1)
-@click.argument('fqdn', nargs=1)
-def add(ip, mac, netbios, fqdn):
+
+@cli.command(help="Manually add an asset to Tenable.io")
+@click.option('--ip', default='', help="IP address(s) of new asset")
+@click.option('--mac', default='', help="Mac Address of new asset")
+@click.option('--netbios', default='', help="NetBios of new asset")
+@click.option('--fqdn', default='', help='FQDN of new asset')
+@click.option('--hostname', default='', help="Hostname of new asset")
+def add(ip, mac, netbios, fqdn, hostname):
     asset = {}
     ipv4 = []
     macs = []
-    netbioss = []
     fqdns = []
+    hostnames = []
     if ip:
         ipv4.append(ip)
         asset["ip_address"] = ipv4
@@ -1754,26 +1821,180 @@ def add(ip, mac, netbios, fqdn):
         asset["mac_address"] = macs
 
     if netbios:
-        netbioss.append(netbios)
-        asset["netbios_name"] = netbioss
+        asset["netbios_name"] = netbios
 
     if fqdn:
         fqdns.append(fqdn)
         asset["fqdn"] =fqdns
 
+    if hostname:
+        hostnames.append(hostname)
+        asset["hostname"] =hostnames
 
-    print(asset)
-    #payload =  "{\"assets\":[{\"mac_address\":[\"test\"],\"ip_address\":[\"testing\"]}]}"
-    payload = {"assets":[asset],"source":"navi"}
+    #create Payload
+    payload ={"assets":[asset],"source":"navi"}
+
+    print("Added the following Data : \n")
     print(payload)
-    payload2 = "{\"assets\":[{\"mac_address\":[\"01:02:03:04:05\"],\"netbios_name\":\"Navitest\",\"fqdn\":[\"thisisatest.com\"],\"ip_address\":[\"1.1.1.1\"]}],\"source\":\"navi\"}"
-    print(payload2)
-    #r = requests.post('https://cloud.tenable.com/import/assets', data=payload, headers=grab_headers())
-    #data = post_data('/import/assets',payload)
-    #data = r.json()
-    #pprint.pprint(data)
+    print()
+
+    #request Import Job
+    data = post_data('/import/assets', payload)
+    print("Your Import ID is : ", data['asset_import_job_uuid'])
 
 
+@cli.command(help="Mail yourself a Report")
+@click.option('-latest', is_flag=True, help='Email Vulnerability Summary Information')
+@click.option('-consec', is_flag=True, help="Email Container Security Summary Information")
+@click.option('-webapp', is_flag=True, help="Email Web Application Scanning Summary Information")
+def mail(latest, consec, webapp):
+    server, port, from_email, password = smtp()
+
+    to_email = input("Please enter the email you wish send this mail to: ")
+    subject = input("Please enter the Subject of the email : ")
+
+    subject += " - Emailed by Navi Pro"
+    '''
+    from_email = 'auto.jason.blox@gmail.com'
+    #to_email = 'cyberdice113@gmail.com'
+    #subject = 'Cyber Exposure Information emailed by Navi Pro'
+    mail_server = 'smtp.gmail.com'
+    port = 587
+    password = ''
+    '''
+    #start the message with the proper heading
+    msg = "\r\n".join([
+        "From: {}".format(from_email),
+        "To: {}".format(to_email),
+        "Subject: {}".format(subject),
+        "",])
+
+    if latest:
+        data = get_data('/scans')
+        l = []
+        e = {}
+        for x in range(len(data["scans"])):
+            # keep UUID and Time together
+            # get last modication date for duration computation
+            epoch_time = data["scans"][x]["last_modification_date"]
+            # get the scanner ID to display the name of the scanner
+            d = data["scans"][x]["id"]
+            # need to identify type to compare against pvs and agent scans
+            type = str(data["scans"][x]["type"])
+            # don't capture the PVS or Agent data in latest
+            while type not in ['pvs', 'agent', 'webapp', 'lce']:
+                # put scans in a list to find the latest
+                l.append(epoch_time)
+                # put the time and id into a dictionary
+                e[epoch_time] = d
+                break
+
+        # find the latest time
+        grab_time = max(l)
+
+        # get the scan with the corresponding ID
+        grab_uuid = e[grab_time]
+
+        # turn epoch time into something readable
+        epock_latest = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(grab_time))
+        msg += "\nThe last Scan run was at : {}\n".format(epock_latest)
+
+        # pull the scan data
+        details = get_data('/scans/' + str(grab_uuid))
+
+        # pprint.pprint(details)
+
+        scanner_name = details["info"]['scanner_name']
+        name = details["info"]["name"]
+        hostcount = details["info"]["hostcount"]
+
+        msg += "\nThe Scanner name is : {}"\
+            "\nThe Name of the scan is {}"\
+            "The {} host(s) that were scanned are below :\n".format(scanner_name, name, hostcount)
+
+        for x in range(len(details["hosts"])):
+            hostname = details["hosts"][x]["hostname"]
+            msg += "\n {}".format(hostname)
+
+        start = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_start"]))
+
+        msg += "\n\nScan start : {}".format(start)
+
+        try:
+            stop = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_end"]))
+            msg += "Scan finish : ".format(stop)
+
+            duration = (details["info"]["scan_end"] - details["info"]["scan_start"]) / 60
+            msg += "Duration : {} Minutes".format(duration)
+        except:
+            print("This scan is still running")
+
+        msg += "\nScan Notes Below : \n\n"
+
+        for x in range(len(details["notes"])):
+            title = details["notes"][x]["title"]
+            message = details["notes"][x]["message"]
+            msg += "{} \n {}".format(title, message)
+
+        msg += "\n\n"
+
+    if consec:
+        consec_data = get_data('/container-security/api/v2/images?limit=1000')
+        msg += "\n\nContainer Name - Docker ID - # of Vulns\n---------------------------------------\n"
+
+        for images in consec_data["items"]:
+            name = images["name"]
+            docker_id = str(images["imageHash"])
+            vulns = str(images["numberOfVulns"])
+            msg += "{} : {} : {}\n".format(name, docker_id, vulns)
+
+    if webapp:
+        webapp_data = get_data('/scans')
+
+        # cycle through all of the scans and pull out the webapp scan IDs
+        msg += "\n\n Web Application Scan Summary\n-----------------------------------------\n"
+        for scans in webapp_data['scans']:
+
+            if scans['type'] == 'webapp':
+                scan_details = get_data('/scans/' + str(scans['id']))
+                try:
+                    hostname = scan_details['hosts'][0]['hostname']
+                except:
+                    hostname = " "
+                try:
+                    message = scan_details['notes'][0]['message']
+                except:
+                    message = " "
+                try:
+                    critical = scan_details['hosts'][0]['critical']
+                except:
+                    critical = 0
+                try:
+                    high = scan_details['hosts'][0]['high']
+                except:
+                    high = 0
+                try:
+                    medium = scan_details['hosts'][0]['medium']
+                except:
+                    medium = 0
+                try:
+                    low = scan_details['hosts'][0]['low']
+                except:
+                    low = 0
+
+                if message != "Job expired while pending status.":
+                    msg += "\nFQDN : {}\n" \
+                           "Scan Message: " \
+                           "{}\n\n" \
+                           "Vulnerability Summary\n----------------------\n" \
+                           "Critical : {}\n" \
+                           "High {}\n" \
+                           "Medium {}\n" \
+                           "Low {}\n".format(hostname, message, critical, high, medium, low)
+
+    print("Here is a copy of your email that was Sent")
+    print(msg)
+    send_email(from_email, to_email, msg, server, password, port)
 
 
 if __name__ == '__main__':
