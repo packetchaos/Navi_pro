@@ -23,7 +23,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   
 ## Download and Configure Navi
 
-![](images/Install and Configure.gif)
+![ ](images/Install and Configure.gif)
 
     `docker pull silentninja/navi_pro`
   
@@ -33,7 +33,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
     
    
 
-![](images/Download T.io Data.gif)
+![ ](images/Download T.io Data.gif)
 
      `Navi_pro.py update
   
