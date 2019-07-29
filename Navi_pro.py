@@ -10,7 +10,6 @@ import json
 import csv
 import smtplib
 
-
 requests.packages.urllib3.disable_warnings()
 
 
@@ -1224,8 +1223,8 @@ def report(latest,container,docker,comply, details, summary):
             pass
 
     if comply:
-        data = get_data('/container-security/api/v1/policycompliance?image_id=' + str(comply))
-
+        #data = get_data('/container-security/api/v1/policycompliance?image_id=' + str(comply))
+        data = get_data('/conatiner-security/api/v2/reports/'+ str(comply))
         print("Status : ", data['status'])
         #pprint.pprint(data)
 
@@ -1321,11 +1320,12 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
 
     if containers:
         data = get_data('/container-security/api/v2/images?limit=1000')
-        print("Container Name : Docker ID : # of Vulns\n")
+        print("Container Name".ljust(15) +" | " + "Repository ID".ljust(20) + " | " +"Tag".ljust(10) + " | " + "Docker ID".ljust(15) + " | " + "# of Vulns".ljust(10))
+        print("-----------------------------------------------------------------------------------")
 
         for images in data["items"]:
 
-            print(str(images["name"]) + " : " + str(images["imageHash"]) + " : " + str(images["numberOfVulns"]))
+            print(str(images["name"]).ljust(15) + " | " + str(images["repoName"]).ljust(20) + " | " + str(images["tag"]).ljust(10) + " | " + str(images["imageHash"]).ljust(15) + " | " + str(images["numberOfVulns"]).ljust(25))
 
     if logs:
         data = get_data('/audit-log/v1/events')
@@ -1848,20 +1848,13 @@ def add(ip, mac, netbios, fqdn, hostname):
 @click.option('-consec', is_flag=True, help="Email Container Security Summary Information")
 @click.option('-webapp', is_flag=True, help="Email Web Application Scanning Summary Information")
 def mail(latest, consec, webapp):
+    #grab SMTP information
     server, port, from_email, password = smtp()
-
     to_email = input("Please enter the email you wish send this mail to: ")
     subject = input("Please enter the Subject of the email : ")
 
     subject += " - Emailed by Navi Pro"
-    '''
-    from_email = 'auto.jason.blox@gmail.com'
-    #to_email = 'cyberdice113@gmail.com'
-    #subject = 'Cyber Exposure Information emailed by Navi Pro'
-    mail_server = 'smtp.gmail.com'
-    port = 587
-    password = ''
-    '''
+
     #start the message with the proper heading
     msg = "\r\n".join([
         "From: {}".format(from_email),
@@ -1940,13 +1933,15 @@ def mail(latest, consec, webapp):
 
     if consec:
         consec_data = get_data('/container-security/api/v2/images?limit=1000')
-        msg += "\n\nContainer Name - Docker ID - # of Vulns\n---------------------------------------\n"
-
+        msg += "\n\nContainer Name - Repo Name - Tag - Docker ID - # of Vulns\n---------------------------------------\n"
+        
         for images in consec_data["items"]:
             name = images["name"]
             docker_id = str(images["imageHash"])
             vulns = str(images["numberOfVulns"])
-            msg += "{} : {} : {}\n".format(name, docker_id, vulns)
+            repo = str(images["repoName"])
+            tag = str(images["tag"])
+            msg += "{} : {} : {} : {} : {}\n".format(name, repo, tag, docker_id, vulns)
 
     if webapp:
         webapp_data = get_data('/scans')
