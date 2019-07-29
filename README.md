@@ -4,7 +4,7 @@ in Cyber Exposure or Vulnerability Management.
 
 ### Important Note
 Navi Pro will download the entire data-set locally after API keys are 
-entered and commands are run! To download Vuln and Asset data you have to be an Administrator.
+entered and commands are run! To download Vuln and Asset data you have to be an Administrator in Tenable.io.
 
 All Vulns and All Assets are downloaded into two txt files in json format:
  **tio_asset_data.txt** and **tio_vuln_data.txt**.  
@@ -15,11 +15,6 @@ All Vulns and All Assets are downloaded into two txt files in json format:
  The data will not be updated until you run the update command.
  
  `python3 Navi_pro.py update`
-
-## General Instructions
-  * Download Navi_pro.py to your machine
-  * Install the required packages
-  * Enter in your API keys  :`python3 Navi_pro.py keys`
   
 ## Download and Configure Navi
 
@@ -43,11 +38,25 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   `docker attach <container id>`
   
   `<press enter>`
-  
+
+## Configure For Reporting
+Navi has a few reporting capabilities where a CSV is the output.  To extract this data from the container you will need to launch the container with port 8000 exposed and use a python http server to extract the reports.
+
+`docker run -it -p 8000:8000 silentninja/navi_pro:latest`
+
+## Extract Data
+
+* Run a local simple http server to extract the data
+
+`python3 -m http.server`
+
+* Navigate to the website: http://<Host-IP>:8000
+* Simply download the item you want
+
 ## Usage
 Before you begin you need the Keys! The program will continue to error out without valid API keys
 
-`python3 Navi_pro.py keys`
+`Navi_pro.py keys`
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
@@ -62,7 +71,7 @@ There are nine core commands:
  * delete - Delete an object by it's ID
  * mail - Mail a report 
  
- There are ten single use commands: 
+ There are eleven single use commands: 
  * scan - Create and lanuch a scan
  * start - Start a scan by Scan-ID
  * pause - Pause a scan by Scan-ID
@@ -73,6 +82,7 @@ There are nine core commands:
  * delete - Delete a scan by Scan ID
  * status - Get the latest status by Scan ID
  * mac - Get the manufacture by Mac Address
+ * keys - Add or update your keys
  
 
 ### Explore the Tenable.io API - 'api'
@@ -123,6 +133,9 @@ There are nine core commands:
   * -ghost --> Find Assets found by a Connector and not scanned by Nessus(AWS ONLY)
 
 ### Examples
+
+![](images/Find.gif)
+
 `python3 Navi_pro.py find --plugin 19506`
 
 `python3 Navi_pro.py find -docker`

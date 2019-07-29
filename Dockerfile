@@ -14,4 +14,6 @@ RUN ["chmod", "+x", "/usr/src/app/Navi_pro.py"]
 
 ENV PATH "$PATH:/usr/bin/env/:/usr/src/app"
 
+EXPOSE 8000
+
 WORKDIR /usr/src/app
