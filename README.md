@@ -21,9 +21,6 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   * Install the required packages
   * Enter in your API keys  :`python3 Navi_pro.py keys`
   
-## Docker Instructions
-   Remember this is a Docker Container, so if you exit the container the information you were working will be distroyed.  If you want to save your data, use (CTR + Q + P) to detach yourself from the container.  Use `docker attach` to connect back to the container.
-  
 ##Download and Configure Navi
 ![](images/Install and Configure.gif)
 
