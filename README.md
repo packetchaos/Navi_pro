@@ -21,7 +21,8 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   * Install the required packages
   * Enter in your API keys  :`python3 Navi_pro.py keys`
   
-##Download and Configure Navi
+## Download and Configure Navi
+
 ![](images/Install and Configure.gif)
 
     `docker pull silentninja/navi_pro`
@@ -36,9 +37,9 @@ All Vulns and All Assets are downloaded into two txt files in json format:
 
      `Navi_pro.py update
   
-##Detach from Container
+## Detach from Container
   * CTR+Q+P
-##Attach to Contianer
+## Attach to Contianer
   `docker attach <container id>`
   
   `<press enter>`
