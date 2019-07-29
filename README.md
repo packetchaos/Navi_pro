@@ -23,7 +23,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   
 ## Download and Configure Navi
 
-![ ](images/Install and Configure.gif)
+![](images/Configure.gif)
 
     `docker pull silentninja/navi_pro`
   
@@ -33,7 +33,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
     
    
 
-![ ](images/Download T.io Data.gif)
+![](images/Download.gif)
 
      `Navi_pro.py update
   
@@ -82,7 +82,8 @@ There are nine core commands:
    * /users
 
 ### Examples
-![](images/Explore the Api.gif)
+
+![](images/Explore.gif)
 
 `python3 Navi_pro.py api /scans`
 
@@ -106,7 +107,8 @@ There are nine core commands:
   * -details --> Details on an Asset: IP, UUID, Vulns, etc
 
 ### Examples
-![](images/IP Command examples.gif)
+
+![](images/IP.gif)
 
 `python3 Navi_pro.py ip 192.168.1.1 --plugin 19506`
 
