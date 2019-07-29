@@ -39,7 +39,9 @@ All Vulns and All Assets are downloaded into two txt files in json format:
   * CTR+Q+P
   
 ##Attach to Contianer
-  `docker attach <container name>`
+  `docker attach <container id>`
+  
+  `<press enter>`
   
 ## Usage
 Before you begin you need the Keys! The program will continue to error out without valid API keys
