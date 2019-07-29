@@ -25,10 +25,9 @@ All Vulns and All Assets are downloaded into two txt files in json format:
    Remember this is a Docker Container, so if you exit the container the information you were working will be distroyed.  If you want to save your data, use (CTR + Q + P) to detach yourself from the container.  Use `docker attach` to connect back to the container.
   
 ###Download and Run
-  * Download Navi_pro.py and the Docker file into the same directory
-  * Change into the new directory `cd Navi_pro`
-  * Build the Docker image `docker build -t navi/pro:latest .`
-  * Run the Docker container and open a shell `docker run -it navi/pro:latest /bin/bash `
+  `docker pull silentninja/navi_pro`
+  
+  `docker run -it silentninja/navi_pro:latest /bin/bash `
 
 ##Configure Your Container 
   * Add your keys `Navi_pro.py keys`
