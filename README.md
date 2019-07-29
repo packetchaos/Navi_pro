@@ -19,9 +19,26 @@ All Vulns and All Assets are downloaded into two txt files in json format:
 ## Instructions
   * Download Navi_pro.py to your machine
   * Install the required packages
-  * Enter in your API keys  :
-  `python3 Navi_pro.py keys`
+  * Enter in your API keys  :`python3 Navi_pro.py keys`
+  
+## Docker Instructions
+   Remember this is a Docker Container, so if you exit the container the information you were working will be distroyed.  If you want to save your data, use (CTR + Q + P) to detach yourself from the container.  Use `docker attach` to connect back to the container.
+  
+  ###Download and Run
+  * Download Navi_pro.py and the Docker file into the same directory
+  * Change your directory to where you Downloaded Navi_pro.py and the Dockerfile
+  * Build the Docker image `docker build -t navi/pro:latest .`
+  * Run the Docker container and open a shell `docker run -it navi/pro:latest /bin/bash `
 
+  ##Configure Your Container 
+  * Add your keys `Navi_pro.py keys`
+  * Download your the last 30 days of data `Navi_pro.py update`
+  
+  ##Detach from Container
+  * CTR+Q+P
+  
+  ##Attach to Contianer
+  `docker attach <container name>`
   
 ## Usage
 Before you begin you need the Keys! The program will continue to error out without valid API keys
