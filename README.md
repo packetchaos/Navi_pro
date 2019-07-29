@@ -24,19 +24,23 @@ All Vulns and All Assets are downloaded into two txt files in json format:
 ## Docker Instructions
    Remember this is a Docker Container, so if you exit the container the information you were working will be distroyed.  If you want to save your data, use (CTR + Q + P) to detach yourself from the container.  Use `docker attach` to connect back to the container.
   
-###Download and Run
-  `docker pull silentninja/navi_pro`
-  
-  `docker run -it silentninja/navi_pro:latest /bin/bash `
+##Download and Configure Navi
+![](images/Install and Configure.gif)
 
-##Configure Your Container 
-  * Add your keys `Navi_pro.py keys`
-  * Download your the last 30 days of data `Navi_pro.py update`
-  * Explore Tenable.io on the commadline
+    `docker pull silentninja/navi_pro`
+  
+    `docker run -it silentninja/navi_pro:latest /bin/bash `
+
+    `Navi_pro.py keys`
+    
+   
+
+![](images/Download T.io Data.gif)
+
+     `Navi_pro.py update
   
 ##Detach from Container
   * CTR+Q+P
-  
 ##Attach to Contianer
   `docker attach <container id>`
   
@@ -80,6 +84,8 @@ There are nine core commands:
    * /users
 
 ### Examples
+![](images/Explore the Api.gif)
+
 `python3 Navi_pro.py api /scans`
 
 `python3 Navi_pro.py api /scanners`
@@ -102,6 +108,8 @@ There are nine core commands:
   * -details --> Details on an Asset: IP, UUID, Vulns, etc
 
 ### Examples
+![](images/IP Command examples.gif)
+
 `python3 Navi_pro.py ip 192.168.1.1 --plugin 19506`
 
 `python3 Navi_pro.py ip 192.168.1.1 -details -software`
