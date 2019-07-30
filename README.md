@@ -14,49 +14,47 @@ All Vulns and All Assets are downloaded into two txt files in json format:
  
  The data will not be updated until you run the update command.
  
- `python3 Navi_pro.py update`
+    Navi_pro.py update
   
 ## Download and Configure Navi
 
 ![](images/Configure.gif)
 
-    `docker pull silentninja/navi_pro`
+    docker pull silentninja/navi_pro
   
-    `docker run -it silentninja/navi_pro:latest /bin/bash `
+    docker run -it silentninja/navi_pro:latest /bin/bash 
 
-    `Navi_pro.py keys`
+    Navi_pro.py keys
     
    
 
 ![](images/Download.gif)
 
-     `Navi_pro.py update
+     Navi_pro.py update
   
 ## Detach from Container
-  * CTR+Q+P
+    CTR+Q
 ## Attach to Contianer
-  `docker attach <container id>`
+    docker attach <container id>
   
-  `<press enter>`
+    <press enter>
 
 ## Configure For Reporting
 Navi has a few reporting capabilities where a CSV is the output.  To extract this data from the container you will need to launch the container with port 8000 exposed and use a python http server to extract the reports.
 
-`docker run -it -p 8000:8000 silentninja/navi_pro:latest`
+    docker run -it -p 8000:8000 silentninja/navi_pro:latest
 
-## Extract Data
+### Extract Data
 
-* Run a local simple http server to extract the data
+ * Run a local simple http server to extract the data `python3 -m http.server`
+ * Navigate to the website: http://<Host-IP>:8000
+ * Simply download the item you want
 
-`python3 -m http.server`
-
-* Navigate to the website: http://<Host-IP>:8000
-* Simply download the item you want
 
 ## Usage
 Before you begin you need the Keys! The program will continue to error out without valid API keys
 
-`Navi_pro.py keys`
+    Navi_pro.py keys
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
@@ -95,9 +93,9 @@ There are nine core commands:
 
 ![](images/Explore.gif)
 
-`python3 Navi_pro.py api /scans`
+    Navi_pro.py api /scans
 
-`python3 Navi_pro.py api /scanners`
+    python3 Navi_pro.py api /scanners
   
 ### IP address queries - 'ip'
   * --plugin TEXT --> Find Details on a particular plugin ID
@@ -120,9 +118,9 @@ There are nine core commands:
 
 ![](images/IP.gif)
 
-`python3 Navi_pro.py ip 192.168.1.1 --plugin 19506`
+    Navi_pro.py ip 192.168.1.1 --plugin 19506
 
-`python3 Navi_pro.py ip 192.168.1.1 -details -software`
+    Navi_pro.py ip 192.168.1.1 -details -software
 
 ### Find information - 'find'
   * --plugin TEXT --> Find Assets where this plugin fired
@@ -136,11 +134,11 @@ There are nine core commands:
 
 ![](images/Find.gif)
 
-`python3 Navi_pro.py find --plugin 19506`
+    Navi_pro.py find --plugin 19506
+    
+    Navi_pro.py find -docker
 
-`python3 Navi_pro.py find -docker`
-
-`python3 Navi_pro.py find --time 10`
+    Navi_pro.py find --time 10
 
 ### Reports - Information - 'report'
   * -latest -->  Report the Last Scan Details
@@ -151,15 +149,15 @@ There are nine core commands:
   * --summary TEXT --> Report Scan Summary by Scan ID
 
 ### Examples
-`python3 Navi_pro.py report -latest`
+    Navi_pro.py report -latest
 
-`python3 Navi_pro.py report --container 48b5124b2768`
+    Navi_pro.py report --container 48b5124b2768
 
-`python3 Navi_pro.py report --docker 48b5124b2768`
+    Navi_pro.py report --docker 48b5124b2768
 
-`python3 Navi_pro.py report -comply 48b5124b2768`
+    Navi_pro.py report -comply 48b5124b2768
 
-`pyton3 Navi_pro.py report --summary 13`
+    Navi_pro.py report --summary 13
 
 ### List - Common Information - 'list'
   * -scanners --> List all of the Scanners
@@ -180,27 +178,26 @@ There are nine core commands:
   * -tgroup --> Displays information about Target Groups
 
 ### Examples
-`python3 Navi_pro.py list -scanners`
+    Navi_pro.py list -scanners
 
-`python3 Navi_pro.py list -running`
+    Navi_pro.py list -running
 
-`python3 Navi_pro.py list -nnm `
+    Navi_pro.py list -nnm
 
 ### Group Assets together - 'group'
   * -pid --> Create Target Group based a plugin ID
   * -pname --> Create Target Group by Text found in the Plugin Name
-  * -pout TEXT --> Create a Target Group by Text found in the Plugin Output: Must
-              supply Plugin ID
-  * aws --> Create a target group by AWS assets found by a connector but not scanned.
+  * -pout TEXT --> Create a Target Group by Text found in the Plugin Output: Must supply Plugin ID
+  * -aws --> Create a target group by AWS assets found by a connector but not scanned.
 
 ### Examples
-`python3 Navi_pro.py group 19506 -pid`
+    Navi_pro.py group 19506 -pid
 
-`python3 Navi_pro.py group Docker -pname`
+    Navi_pro.py group Docker -pname
 
-`python3 Navi_pro.py group 20811 -pout Wireshark`
+    Navi_pro.py group 20811 -pout Wireshark
 
-`python3 Navi_pro.py group aws`
+    Navi_pro.py group aws
 
 ### Export Asset, Agent, or Webapp Data - 'export'
 
@@ -211,8 +208,9 @@ There are nine core commands:
 
 ### Examples
 
-`python3 Navi_pro.py export -assets`
-`python3 Navi_pro.py export -agents`
+    Navi_pro.py export -assets
+    
+    Navi_pro.py export -agents -assets -webapp -consec
 
 ### Delete an Object by an ID
 * scan - Delete a scan by ID
@@ -221,15 +219,18 @@ There are nine core commands:
 * policy - Delete a Policy
 * asset - Delete an asset
 
-`python3 Navi_pro.py delete 1234 -scan`
+### Examples
 
-`python3 Navi_pro.py delete 4567 -agroup`
 
-`python3 Navi_pro.py delete 8910 -tgroup`
+    Navi_pro.py delete 1234 -scan
 
-`python3 Navi_pro.py delete 12345 -asset`
+    Navi_pro.py delete 4567 -agroup
 
-`python3 Navi_pro.py delete 6789 -policy`
+    Navi_pro.py delete 8910 -tgroup
+
+    Navi_pro.py delete 12345 -asset
+
+    Navi_pro.py delete 6789 -policy
 
 ### Mail a Report
 * latest - Mail a report of the latest scan: Same output as "report -latest"
@@ -240,39 +241,54 @@ There are nine core commands:
 ## Use Cases
 
 ### What was last scanned?
-`python3 Navi_pro.py report -latest`
+    Navi_pro.py report -latest
 
 ### What scans are running right now?
-`python3 Navi_pro.py list -running`
+    Navi_pro.py list -running
 
 ### Find a Scan id by Scan Name
-`python3 Navi_pro.py list -scan | grep -b2 <ScanName>`
+    Navi_pro.py list -scan | grep -b2 <ScanName>
 
 ### Create a Scan
-`python3 Navi.py scan 192.168.128.0/24`
+    Navi.py scan 192.168.128.1
+    
+    Navi.py scan 192.168.128.0/24
+    
   * Choose your scan type: Basic or Discovery
   * Pick your scanner by ID: scanners will be displayed
   * Scan will immediately kick off
 
 ### Control your scans
-`python3 Navi_pro.py pause 13`
+    Navi_pro.py pause 13
 
-`python3 Navi_pro.py resume 13`
+    Navi_pro.py resume 13
 
-`python3 Navi_pro.py stop 13`
+    Navi_pro.py stop 13
 
-`python3 Navi_pro.py start 13`
+    Navi_pro.py start 13
 
 ### Find Available scanners
-`pyhton3 Navi_pro.py list -scanners`
+    Navi_pro.py list -scanners
 
 ### Create 100s of Webapp Scans from a CSV File
-* Save CSV file in the same folder as Navi_pro.py
+* Receive the file and run the below command
   
-`python3 Navi_pro.py spider <your_csv_file.csv>`
+    Navi_pro.py spider <your_csv_file.csv>
+    
+    
 * Chooes your Scan type : Webapp Overview or Webapp Scan
 * Choose your scanner: A list will be displayed
 * Scans will be created but not started.
 * An output of the Webapp URL and Scan ID will be displayed on completion
+
+### Getting Data into the Container
+
+From the container - Prepare your container to receive a file
+
+    nc -l -p 8000 > yourfilename.csv
+
+From the computer with the file - Send the file
+
+    nc containerhostIP 8000 < yourfilename.csv
 
 
