@@ -13,11 +13,9 @@ import smtplib
 
 requests.packages.urllib3.disable_warnings()
 
-
 @click.group()
 def cli():
     click.echo("Hey Listen!")
-
 
 @cli.command(help="Enter or Reset your Keys")
 def keys():
@@ -35,42 +33,37 @@ def keys():
     print("Now you have keys, re-run your command")
     sys.exit()
 
-
+@cli.command(help="Enter or Overwrite your SMTP information")
 def smtp():
+    print("Hey you don't have any SMTP information!")
+    server = input("Enter the Email servers address : ")
+    port = input("Enter the port your Email server uses : ")
+    from_email = input("Enter your Email Address : ")
+    password = input("Enter your email password : ")
 
-    if os.path.isfile('./smtp.pickle') is False:
-        print("Hey you don't have any SMTP information!")
+    dicts = {"Server": server, "Port": port, "From Email": from_email, "Password": password}
 
-        server = input("Enter the Email servers address : ")
-        port = input("Enter the port your Email server uses : ")
-        from_email = input("Enter your Email Address : ")
-        password = input("Enter your email password : ")
+    pickle_out = open("smtp.pickle", "wb")
+    pickle.dump(dicts, pickle_out)
+    pickle_out.close()
 
-        dicts = {"Server": server, "Port": port, "From Email": from_email, "Password": password}
+    print("Your SMTP settings have been saved")
 
-        pickle_out = open("smtp.pickle", "wb")
-        pickle.dump(dicts, pickle_out)
-        pickle_out.close()
+def grab_smtp():
+    #grab SMTP information
 
-        print("Your SMTP settings have been saved")
+    print("pulling from file")
+    pickle_in = open("smtp.pickle", "rb")
+    smtp_info = pickle.load(pickle_in)
+    server = smtp_info["Server"]
+    port = smtp_info["Port"]
+    from_email = smtp_info["From Email"]
+    password = smtp_info["Password"]
 
-        return server, port, from_email, password
-
-
-    else:
-        pickle_in = open("smtp.pickle", "rb")
-        smtp_info = pickle.load(pickle_in)
-        server = smtp_info["Server"]
-        port = smtp_info["Port"]
-        from_email = smtp_info["From Email"]
-        password = smtp_info["Password"]
-
-        return server, port, from_email, password
-
+    return server, port, from_email, password
 
 def error_msg():
     print("Check your API keys or your internet connection")
-
 
 def grab_headers():
     access_key = ''
@@ -89,18 +82,11 @@ def grab_headers():
     headers = {'Content-type':'application/json','X-ApiKeys':'accessKey='+access_key+';secretKey='+secret_key}
     return headers
 
-
 def get_data(url_mod):
-    '''
-
-    :param url_mod: The URL endpoint. Ex: /scans
-    :return: Response from API in json format
-    '''
     url = "https://cloud.tenable.com"
     headers = grab_headers()
     try:
         r = requests.request('GET', url + url_mod, headers=headers, verify=False)
-
 
         if r.status_code == 200:
             data = r.json()
@@ -119,7 +105,6 @@ def get_data(url_mod):
     except ConnectionError:
         print("Check your connection...You got a connection error")
     #Trying to catch API errors
-
 
 def delete_data(url_mod):
     url = "https://cloud.tenable.com"
@@ -147,7 +132,6 @@ def delete_data(url_mod):
     except ConnectionError:
         print("Check your connection...You got a connection error")
 
-
 def special_get(url_mod,querystring):
     url = "https://cloud.tenable.com"
     headers = grab_headers()
@@ -171,19 +155,26 @@ def special_get(url_mod,querystring):
     except ConnectionError:
         print("Check your connection...You got a connection error")
 
-
 def quick_post(url_mod):
-    '''
-
-    :param url_mod: The URL endpoint. Ex: /scans/<scan-id>/launch
-    :return: Response from the API
-    '''
     url = "https://cloud.tenable.com"
     headers = grab_headers()
-    r = requests.post(url + url_mod, headers=headers, verify=False)
 
-    return r
+    try:
+        data = requests.post(url + url_mod, headers=headers, verify=False)
+        if data.status_code == 200:
+            print("Success!")
+        elif data.status_code == 409:
+            print("I can't do that right now...Check the current status")
 
+        elif data.status_code == 404:
+            print("Yeah...This scan either doesn't exist or is in a changing state")
+        else:
+            print("It's possible this is already stopped")
+
+
+    except:
+        print("Ahh now you've done it...")
+        print("double check your id")
 
 def post_data(url_mod,payload):
     #Set the URL endpoint
@@ -199,7 +190,6 @@ def post_data(url_mod,payload):
 
     return data
 
-
 def put_data(url_mod,payload):
     #Set the URL endpoint
     url = "https://cloud.tenable.com"
@@ -211,7 +201,6 @@ def put_data(url_mod,payload):
     r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
     #retreive data in json format
     return
-
 
 def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
@@ -266,7 +255,6 @@ def vuln_export():
     except KeyError:
         print("Well this is a bummer; you don't have permissions to download Vuln data :( ")
 
-
 def asset_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 2660000
@@ -320,17 +308,16 @@ def asset_export():
     except KeyError:
         print("Well this is a bummer; you don't have permissions to download Asset data :( ")
 
-
 def plugin_by_ip(cmd,plugin):
     try:
         with open('tio_vuln_data.txt') as json_file:
             data = json.load(json_file)
 
-            for x in range(len(data)):
-                if data[x]['asset']['ipv4'] == cmd:
-                    if str(data[x]['plugin']['id']) == plugin:
+            for x in data:
+                if x['asset']['ipv4'] == cmd:
+                    if str(x['plugin']['id']) == plugin:
 
-                        print(data[x]['output'])
+                        print(x['output'])
                     else:
                         pass
     except:
@@ -340,18 +327,17 @@ def plugin_by_ip(cmd,plugin):
         vuln_export()
         asset_export()
 
-
 def find_by_plugin(plugin):
     try:
         with open('tio_vuln_data.txt') as json_file:
             data = json.load(json_file)
 
-            for x in range(len(data)):
-                if str(data[x]['plugin']['id']) == plugin:
-                    print("\nIP : ", data[x]['asset']['ipv4'])
-                    print("UUID :", data[x]['asset']['uuid'])
+            for x in data:
+                if str(x['plugin']['id']) == plugin:
+                    print("\nIP : ", x['asset']['ipv4'])
+                    print("UUID :", x['asset']['uuid'])
                     print("\n---Plugin---", plugin, "---Output---\n")
-                    print(data[x]['output'])
+                    print(x['output'])
                     print("---Output---", plugin, "---End---")
                 else:
                     pass
@@ -362,19 +348,14 @@ def find_by_plugin(plugin):
         vuln_export()
         asset_export()
 
-
 def print_data(data):
     try:
         #there may be multiple outputs
-        for x in range(len(data['outputs'])):
-            click.echo(data['outputs'][x]['plugin_output'])
-
-        #print an extra line in case the user sends multiple commands
-        click.echo()
+        for output in data['outputs']:
+            print(output['plugin_output'], '\n')
 
     except:
         pass
-
 
 def nessus_scanners():
     try:
@@ -384,7 +365,6 @@ def nessus_scanners():
             print(str(data["scanners"][x]["name"]) + " : " + str(data["scanners"][x]["id"]))
     except:
         print("You may not have access...Check permissions...or Keys")
-
 
 def webscan(targets, scanner_id, template):
 
@@ -403,7 +383,6 @@ def webscan(targets, scanner_id, template):
     print(targets, " : ", scan_id)
     return
 
-
 def find_target_group(tg_name):
     data = get_data('/target-groups')
     group_id = 0
@@ -415,7 +394,6 @@ def find_target_group(tg_name):
         except:
             pass
     return group_id
-
 
 def create_target_group(tg_name, tg_list):
 
@@ -439,7 +417,6 @@ def create_target_group(tg_name, tg_list):
             post_data('/target-groups', payload)
         except:
             print("An Error Occurred")
-
 
 def csv_export():
     with open('tio_asset_data.txt') as json_file:
@@ -509,7 +486,6 @@ def csv_export():
                 except IndexError:
                     pass
 
-
 def agent_export():
     data = get_data('/scanners')
 
@@ -542,7 +518,6 @@ def agent_export():
 
                     agent_writer.writerow([name, ip, platform, connect_time, scanned_time, status])
     return
-
 
 def webapp_export():
 
@@ -595,7 +570,6 @@ def webapp_export():
                     csv_list.append(message)
                     agent_writer.writerow(csv_list)
 
-
 def consec_export():
     data = get_data('/container-security/api/v2/images?limit=1000')
     with open('consec_data.csv', mode='w') as csv_file:
@@ -609,7 +583,6 @@ def consec_export():
             docker_id = images["imageHash"]
             vulns = images["numberOfVulns"]
             agent_writer.writerow([name, docker_id, vulns])
-
 
 def scan_details(uuid):
     # pull the scan data
@@ -639,7 +612,6 @@ def scan_details(uuid):
         print("         " + details["notes"][x]["message"] + "\n")
     return
 
-
 def send_email(from_email, to_email, msg, mail_server, password, port):
     print(msg)
     try:
@@ -653,8 +625,7 @@ def send_email(from_email, to_email, msg, mail_server, password, port):
         print('Email sent!')
     except Exception as E:
         print(E)
-        print('Something went wrong...')
-
+        print('Something went wrong...Your email information my be incorrect')
 
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
@@ -930,7 +901,6 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 
                         pass
 
-
 @cli.command(help="Export data into a CSV")
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
@@ -957,8 +927,7 @@ def export(assets, agents, webapp, consec):
         print()
         consec_export()
 
-#consider changing the argument to TEXT. Look to see if the length is over that of a Plugin ID and if is a number
-#consider breaking these out into their own top level command
+#This will soon be deprecated in Favor of creating and using Tags
 @cli.command(help="Create Target Groups ex: Plugin ID or Text to search for")
 @click.argument('plugin')
 @click.option('-pid', is_flag=True, help='Create Target Group based a plugin ID')
@@ -1041,7 +1010,6 @@ def group(plugin, pid, pname, pout):
             create_target_group("Navi_by_AWS_Connector_info",target_list)
         except:
             print("try again")
-
 
 @cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
@@ -1147,7 +1115,6 @@ def find(plugin, docker, webapp, creds, time, ghost):
         except:
             print("Check your API keys or your internet connection")
 
-
 @cli.command(help="Get the Latest Scan information")
 @click.option('-latest', is_flag=True, help="Report the Last Scan Details")
 @click.option('--container', default='', help='Report CVSS 7 or above by Container ID. Use: list -containers to find Containers')
@@ -1162,16 +1129,16 @@ def report(latest,container,docker,comply, details, summary):
             data = get_data('/scans')
             l = []
             e = {}
-            for x in range(len(data["scans"])):
+            for x in data["scans"]:
                 # keep UUID and Time together
                 # get last modication date for duration computation
-                epoch_time = data["scans"][x]["last_modification_date"]
+                epoch_time = x["last_modification_date"]
                 # get the scanner ID to display the name of the scanner
-                d = data["scans"][x]["id"]
+                d = x["id"]
                 # need to identify type to compare against pvs and agent scans
-                type = str(data["scans"][x]["type"])
+                scan_type = str(x["type"])
                 # don't capture the PVS or Agent data in latest
-                while type not in ['pvs', 'agent', 'webapp', 'lce']:
+                while scan_type not in ['pvs', 'agent', 'webapp', 'lce']:
                     # put scans in a list to find the latest
                     l.append(epoch_time)
                     # put the time and id into a dictionary
@@ -1195,8 +1162,6 @@ def report(latest,container,docker,comply, details, summary):
         try:
             querystring = {"image_id": str(container)}
             data = special_get('/container-security/api/v1/reports/by_image', querystring)
-            #pprint.pprint(data)
-
             try:
                 for vulns in data['findings']:
                     if float(vulns['nvdFinding']['cvss_score']) >= 7:
@@ -1238,7 +1203,6 @@ def report(latest,container,docker,comply, details, summary):
             #data = get_data('/container-security/api/v1/policycompliance?image_id=' + str(comply))
             data = get_data('/conatiner-security/api/v2/reports/'+ str(comply))
             print("Status : ", data['status'])
-            #pprint.pprint(data)
         except:
             error_msg()
 
@@ -1266,7 +1230,6 @@ def report(latest,container,docker,comply, details, summary):
                     print("Score : ", data['hosts'][0]['score'])
                 except:
                     pass
-                #pprint.pprint(data['hosts'])
                 print()
                 print("Vulnerability Details")
                 print("---------------------")
@@ -1287,7 +1250,6 @@ def report(latest,container,docker,comply, details, summary):
         except:
             error_msg()
 
-
 @cli.command(help="Test the API ex: /scans ")
 @click.argument('url')
 def api(url):
@@ -1296,7 +1258,6 @@ def api(url):
         pprint.pprint(data)
     except:
         error_msg()
-
 
 @cli.command(help="Get a List of Scanners, Users, Scans, Assets found in the last 30 days, IP exclusions.  Retreive All containers and Vulnerability Score")
 @click.option('-scanners', is_flag=True, help="List all of the Scanners")
@@ -1323,18 +1284,18 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
     if users:
         try:
             data = get_data('/users')
-            for x in range(len(data["users"])):
-                print(data["users"][x]["name"])
-                print(data["users"][x]["user_name"])
+            for user in data["users"]:
+                print('\n', user["name"].ljust(10)," - ", user["username"],'\n')
+
         except:
             error_msg()
 
     if exclusions:
         try:
             data = get_data('/exclusions')
-            for x in range(len(data["exclusions"])):
-                print("Exclusion Name : " + data["exclusions"][x]["name"])
-                print(data["exclusions"][x]["members"])
+            for x in data["exclusions"]:
+                print("\nExclusion Name : ", x["name"], '\n')
+                print(x["members"], '\n')
 
         except:
             print("No Exclusions Set, or there could be an issue with your API keys")
@@ -1346,7 +1307,6 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             print("-----------------------------------------------------------------------------------")
 
             for images in data["items"]:
-
                 print(str(images["name"]).ljust(15) + " | " + str(images["repoName"]).ljust(20) + " | " + str(images["tag"]).ljust(10) + " | " + str(images["imageHash"]).ljust(15) + " | " + str(images["numberOfVulns"]).ljust(25))
         except:
             error_msg()
@@ -1354,16 +1314,14 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
     if logs:
         try:
             data = get_data('/audit-log/v1/events')
-            for log in range(len(data['events'])):
-                received = data['events'][log]['received']
-                action = data['events'][log]['action']
-                actor = data['events'][log]['actor']['name']
+            for log in data['events']:
+                received = log['received']
+                action = log['action']
+                actor = log['actor']['name']
 
                 print("Date : " + received)
                 print("-------------------")
-                print(action)
-                print(actor)
-                print()
+                print(action, '\n', actor, '\n')
         except:
             error_msg()
 
@@ -1371,16 +1329,17 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         try:
             data = get_data('/scans')
             run = 0
-            for x in range(len(data['scans'])):
-                if data['scans'][x]['status'] == "running":
+            for scan in data['scans']:
+                if scan['status'] == "running":
                     run = run + 1
-                    name = data['scans'][x]['name']
-                    scan_id = data['scans'][x]['id']
-                    current_status = data['scans'][x]['status']
+                    name = scan['name']
+                    scan_id = scan['id']
+                    current_status = scan['status']
 
-                    click.echo("Scan Name : " + name)
+                    click.echo("\nScan Name : " + name)
                     print("Scan ID : " + str(scan_id))
                     print("Current status : " + current_status)
+                    print("-----------------\n")
             if run == 0:
                 print("No running scans")
         except:
@@ -1390,10 +1349,10 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         try:
             data = get_data('/scans')
 
-            for x in range(len(data['scans'])):
-                name = data['scans'][x]['name']
-                scan_id = data['scans'][x]['id']
-                scan_status = data['scans'][x]['status']
+            for scan in data['scans']:
+                name = scan['name']
+                scan_id = scan['id']
+                scan_status = scan['status']
 
                 print("Scan Name : " + name)
                 print("Scan ID : " + str(scan_id))
@@ -1408,10 +1367,10 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             # dynamically find the PVS sensor
             nnm_data = get_data('/scans')
 
-            for x in range(len(nnm_data["scans"])):
+            for nnm in nnm_data["scans"]:
 
-                if (str(nnm_data["scans"][x]["type"]) == 'pvs'):
-                    nnm_id = nnm_data["scans"][x]["id"]
+                if (str(nnm["type"]) == 'pvs'):
+                    nnm_id = nnm["id"]
 
                     try:
                         data = get_data('/scans/' + str(nnm_id) + '/')
@@ -1419,8 +1378,8 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                         print("   IP Address     : Score")
                         print("----------------")
 
-                        for y in range(len(data["hosts"])):
-                            print(str(data["hosts"][y]["hostname"]) + " :  " + str(data["hosts"][y]["score"]))
+                        for host in data["hosts"]:
+                            print(str(host["hostname"]) + " :  " + str(host["score"]))
 
                         print()
                     except:
@@ -1452,40 +1411,38 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
     if policies:
         try:
             data = get_data('/policies')
-            for x in range(len(data['policies'])):
-                print(data['policies'][x]['name'])
-                print(data['policies'][x]['description'])
-                print('Template ID : ', data['policies'][x]['template_uuid'])
-                print()
+            for policy in data['policies']:
+                print(policy['name'])
+                print(policy['description'])
+                print('Template ID : ', policy['template_uuid'], '\n')
         except:
             error_msg()
 
     if connectors:
         try:
             data = get_data('/settings/connectors')
-            #pprint.pprint(data)
             for conn in data["connectors"]:
                 print("\nConnector Type: ", conn['type'])
                 print("Connector Name: ", conn['name'])
                 print("Connector ID: ", conn['id'])
                 print("----------------------------")
                 print("Schedule: ", conn['schedule']['value'], conn['schedule']['units'])
-                print("Last Sync Time", conn['last_sync_time'])
-                print("---------------")
+                try:
+                    print("Last Sync Time", conn['last_sync_time'])
+
+                except:
+                    pass
                 print("Status Message: ",conn['status_message'])
                 print("------------------------------------------")
-        except:
-            print("No connectors configured")
-            print("Check your permissions, internet connection or API keys")
+        except :
+            error_msg()
 
     if agroup:
-
         try:
             data = get_data('/access-groups')
             for group in data["access_groups"]:
                 print("\nAccess Group Name: ", group['name'])
                 print("Access Group ID: ", group['id'])
-                #For Some reason there is not a Created by record for every Access Group
                 try:
                     print("Created by: ", group['created_by_name'])
                 except:
@@ -1504,13 +1461,11 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                     print(rule['type'], rule['operator'], rule['terms'])
                 print()
         except:
-            print("No Access Groups Configured")
-            print("Check your internet connection or API keys if you do have Access groups")
+            error_msg()
 
     if status:
         try:
             data = get_data("/server/properties")
-            #pprint.pprint(data)
             print("\nTenable IO Information")
             print("-----------------------")
             print("Container ID :", data["analytics"]["key"])
@@ -1551,12 +1506,11 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                 last_scanned_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_scanned))
                 print("Agent Name : ", agent['name'])
                 print("-----------------------------")
-                print("\bAgent IP : ", agent['ip'])
-                print("\bLast Connected :", last_connect_time)
-                print("\bLast Scanned : ", last_scanned_time)
-                print("\bAgent Status : ", agent['status'])
-                print()
-                print("\bGroups")
+                print("Agent IP : ", agent['ip'])
+                print("Last Connected :", last_connect_time)
+                print("Last Scanned : ", last_scanned_time)
+                print("Agent Status : ", agent['status'], '\n')
+                print("Groups")
                 print("-------------")
 
                 try:
@@ -1589,16 +1543,15 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
     if tgroup:
         data = get_data('/target-groups')
         try:
-            for group in data['target_groups']:
+            for targets in data['target_groups']:
                 print()
-                print("Name : ", group['name'])
-                print("Owner : ", group['owner'])
-                print("Target Group ID : ", group['id'])
-                print("Members : ", group['members'])
+                print("Name : ", targets['name'])
+                print("Owner : ", targets['owner'])
+                print("Target Group ID : ", targets['id'])
+                print("Members : ", ['members'])
                 print()
         except:
             error_msg()
-
 
 @cli.command(help="Quickly Scan a Target")
 @click.argument('targets')
@@ -1656,7 +1609,6 @@ def scan(targets):
     except:
         error_msg()
 
-
 @cli.command(help="Create a Web App scan from a CSV file")
 @click.argument('csv_input')
 def spider(csv_input):
@@ -1703,7 +1655,6 @@ def spider(csv_input):
     except:
         error_msg()
 
-
 @cli.command(help="Enter in a Mac Address to find the Manufacturer")
 @click.argument('address')
 def mac(address):
@@ -1711,7 +1662,7 @@ def mac(address):
         api_token = "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtYWN2ZW5kb3JzIiwiZXhwIjoxODU3NzYzODQ1LCJpYXQiOjE1NDMyNjc4NDUsImlzcyI6Im1hY3ZlbmRvcnMiLCJqdGkiOiIzYWNiM2Q0YS1lZjQ2LTQ3NWUtYWJiZS05M2NiMDlkMDU5YzIiLCJuYmYiOjE1NDMyNjc4NDQsInN1YiI6Ijk0NyIsInR5cCI6ImFjY2VzcyJ9.a_dLSCJq-KLjOQL52ZgiuDY08_YE5Wl7QhAJpDpHOKoIesGeMRnPGZAx3TgtfwyQVyy6_ozhy447GGdfKyjDXw"
 
         headers = {'Content-type': 'application/json', 'Authorization': api_token}
-        #mac_address = "b8:27:eb:05:cf:76"
+
         url = "https://api.macvendors.com/v1/lookup/"
 
         r = requests.request('GET', url + address, headers=headers, verify=False)
@@ -1724,93 +1675,30 @@ def mac(address):
     except:
         error_msg()
 
-
 @cli.command(help="Pause a running Scan")
 @click.argument('Scan_id')
 def pause(scan_id):
-    try:
-        data = quick_post('/scans/' + str(scan_id) + '/pause')
-        if data.status_code == 200:
-            print(" Your Scan was Paused")
-        elif data.status_code == 409:
-            print("Wait a few seconds and try again")
-        elif data.status_code == 404:
-            print("yeah, this scan doesn't exist")
-        elif data.status_code == 501:
-            print("There was an error: ")
-            print(data.reason)
-        else:
-            print("It's possible this is already paused")
-    except:
-        print("Ahh now you've done it...")
-        print("double check your id")
-
+    quick_post('/scans/' + str(scan_id) + '/pause')
 
 @cli.command(help="Resume a paused Scan")
 @click.argument('scan_id')
 def resume(scan_id):
-    try:
-        data = quick_post('/scans/' + str(scan_id) + '/resume')
-        if data.status_code == 200:
-            print(" Your Scan Resumed")
-        elif data.status_code == 409:
-            print("Wait a few seconds and try again")
-        elif data.status_code == 404:
-            print("yeah, this scan doesn't exist")
-        else:
-            print("It's possible this is already running")
-
-
-    except:
-        print("Ahh now you've done it...")
-        print("double check your id")
-
+    quick_post('/scans/' + str(scan_id) +'/resume')
 
 @cli.command(help="Stop a Running Scan")
 @click.argument('scan_id')
 def stop(scan_id):
-    try:
-        data = quick_post('/scans/' + str(scan_id) + '/stop')
-        if data.status_code == 200:
-            print(" Your Scan was Stopped")
-        elif data.status_code == 409:
-            print("Wait a few seconds and try again")
-        elif data.status_code == 404:
-            print("yeah, this scan doesn't exist")
-        else:
-            print("It's possible this is already stopped")
-
-
-    except:
-        print("Ahh now you've done it...")
-        print("double check your id")
-
+    quick_post('/scans/' + str(scan_id) +'/stop')
 
 @cli.command(help="Start a valid Scan")
 @click.argument('scan_id')
 def start(scan_id):
-    try:
-        data = quick_post('/scans/' + str(scan_id) + '/launch')
-        if data.status_code == 200:
-            print(" Your Scan was Started")
-        elif data.status_code == 409:
-            print("Wait a few seconds and try again")
-        elif data.status_code == 404:
-            print("yeah, this scan doesn't exist")
-        else:
-            print("It's possible this is already started")
-
-
-    except:
-        print("Ahh now you've done it...")
-        print("double check your id")
-
+    quick_post('/scans/' + str(scan_id) + '/launch')
 
 @cli.command(help="Update local repository")
 def update():
     vuln_export()
     asset_export()
-
 
 @cli.command(help="Delete an Object by it's ID")
 @click.argument('id')
@@ -1841,7 +1729,6 @@ def delete(id, scan, agroup, tgroup, policy, asset):
         print("I'm deleting your asset Now")
         delete_data('/workbenches/assets/' + str(id))
 
-
 @cli.command(help="Get Scan Status")
 @click.argument('Scan_id')
 def status(scan_id):
@@ -1852,7 +1739,6 @@ def status(scan_id):
         print()
     except:
         error_msg()
-
 
 @cli.command(help="Manually add an asset to Tenable.io")
 @click.option('--ip', default='', help="IP address(s) of new asset")
@@ -1899,7 +1785,6 @@ def add(ip, mac, netbios, fqdn, hostname):
     except:
         error_msg()
 
-
 @cli.command(help="Mail yourself a Report")
 @click.option('-latest', is_flag=True, help='Email Vulnerability Summary Information')
 @click.option('-consec', is_flag=True, help="Email Container Security Summary Information")
@@ -1907,7 +1792,7 @@ def add(ip, mac, netbios, fqdn, hostname):
 def mail(latest, consec, webapp):
     try:
         #grab SMTP information
-        server, port, from_email, password = smtp()
+        server, port, from_email, password = grab_smtp()
         to_email = input("Please enter the email you wish send this mail to: ")
         subject = input("Please enter the Subject of the email : ")
 
@@ -2048,9 +1933,26 @@ def mail(latest, consec, webapp):
         print("Here is a copy of your email that was Sent")
         print(msg)
         send_email(from_email, to_email, msg, server, password, port)
-    except:
-        error_msg()
+    except Exception as E:
+        print("Your Email information may be incorrect")
+        print("Run the 'SMTP' command to correct your information")
+        print(E)
 
+@cli.command(help="Spin up a http server to extract data from the container")
+def http():
+    try:
+        os.system("python3 -m http.server")
+    except:
+        print("This feature is for container's only")
+
+@cli.command(help="Open up a Netcat listener to accept files over port 8000")
+def listen():
+    try:
+        print("I'm opening a connection so you can send a file into the container")
+        print("use this command on your pc to send data to the connector: nc 127.0.0.1 8000 < \"yourfile.csv\"")
+        os.system("nc -l 8000 > newfile.csv")
+    except:
+        print("This command uses netcat and is only meant for Navi running in a docker container")
 
 if __name__ == '__main__':
     cli()
