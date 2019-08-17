@@ -10,6 +10,7 @@ import sys
 import json
 import csv
 import smtplib
+import getpass
 
 requests.packages.urllib3.disable_warnings()
 
@@ -21,8 +22,8 @@ def cli():
 def keys():
     #assumption is that the user keys didn't work or don't exist
     print("Hey you don't have any Keys!")
-    access_key = input("Please provide your Access Key : ")
-    secret_key = input("Please provide your Secret Key : ")
+    access_key = getpass.getpass("Please provide your Access Key : ")
+    secret_key = getpass.getpass("Please provide your Secret Key : ")
 
     dicts = {"Access Key": access_key, "Secret Key": secret_key}
 
@@ -39,7 +40,7 @@ def smtp():
     server = input("Enter the Email servers address : ")
     port = input("Enter the port your Email server uses : ")
     from_email = input("Enter your Email Address : ")
-    password = input("Enter your email password : ")
+    password = getpass.getpass("Enter your email password : ")
 
     dicts = {"Server": server, "Port": port, "From Email": from_email, "Password": password}
 
