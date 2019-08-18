@@ -1,6 +1,6 @@
 # Navi Pro - The Tenable.io Swiss Army Knife
 A command-line tool which leverages the Tenable.io API to reduce the time it takes to get information that is common 
-in Cyber Exposure or Vulnerability Management.
+in Cyber Exposure or Vulnerability Management. *** This is not Supported by Tenable ***
 
 ### Important Note
 Navi Pro will download the entire data-set locally after API keys are 
@@ -33,23 +33,25 @@ All Vulns and All Assets are downloaded into two txt files in json format:
      Navi_pro.py update
   
 ## Detach from Container
-    CTR+Q
+    CTR+Q+P - CTR+Q+P
+
 ## Attach to Contianer
     docker attach <container id>
   
     <press enter>
 
 ## Configure For Reporting
-Navi has a few reporting capabilities where a CSV is the output.  To extract this data from the container you will need to launch the container with port 8000 exposed and use a python http server to extract the reports.
+Navi has a few reporting capabilities where a CSV is the output.  To extract this data from the container you will need to launch the container with port 8000 exposed and use the 'http' command to extract the reports.
 
-    docker run -it -p 8000:8000 silentninja/navi_pro:latest
+    docker run -it -p 8000:8000 silentninja/navi_pro:latest /bin/bash
 
 ### Extract Data
+To extract data from the container you need to run an http server.  Use the below built in command.
 
- * Run a local simple http server to extract the data `python3 -m http.server`
+    Navi_pro.py http
+
  * Navigate to the website: http://<Host-IP>:8000
- * Simply download the item you want
-
+ * Simply download the item you want by clicking on it.
 
 ## Usage
 Before you begin you need the Keys! The program will continue to error out without valid API keys
@@ -81,6 +83,8 @@ There are nine core commands:
  * status - Get the latest status by Scan ID
  * mac - Get the manufacture by Mac Address
  * keys - Add or update your keys
+ * http - Run an http server to extract files from the container
+ * listen - Run a netcat listener to receive a single file
  
 
 ### Explore the Tenable.io API - 'api'
@@ -95,7 +99,7 @@ There are nine core commands:
 
     Navi_pro.py api /scans
 
-    python3 Navi_pro.py api /scanners
+    Navi_pro.py api /scanners
   
 ### IP address queries - 'ip'
   * --plugin TEXT --> Find Details on a particular plugin ID
@@ -271,12 +275,12 @@ There are nine core commands:
     Navi_pro.py list -scanners
 
 ### Create 100s of Webapp Scans from a CSV File
-* Receive the file and run the below command
+To Receive a file for Navi Pro to use you must push the file to the container.  Netcat is installed on the container to do this, or you can use the 'listen' command to accomplish this.
   
     Navi_pro.py spider <your_csv_file.csv>
     
     
-* Chooes your Scan type : Webapp Overview or Webapp Scan
+* Choose your Scan type : Webapp Overview or Webapp Scan
 * Choose your scanner: A list will be displayed
 * Scans will be created but not started.
 * An output of the Webapp URL and Scan ID will be displayed on completion
@@ -284,6 +288,10 @@ There are nine core commands:
 ### Getting Data into the Container
 
 From the container - Prepare your container to receive a file
+
+    Navi_pro.py listen
+
+    or
 
     nc -l -p 8000 > yourfilename.csv
 

@@ -1951,9 +1951,10 @@ def listen():
     try:
         print("I'm opening a connection so you can send a file into the container")
         print("use this command on your pc to send data to the connector: nc 127.0.0.1 8000 < \"yourfile.csv\"")
-        os.system("nc -l 8000 > newfile.csv")
+        os.system("nc -l -p 8000 > newfile.csv")
     except:
         print("This command uses netcat and is only meant for Navi running in a docker container")
+        print("You probably don't have netcat installed")
 
 if __name__ == '__main__':
     cli()
