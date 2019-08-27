@@ -34,6 +34,7 @@ def keys():
     print("Now you have keys, re-run your command")
     sys.exit()
 
+
 @cli.command(help="Enter or Overwrite your SMTP information")
 def smtp():
     print("Hey you don't have any SMTP information!")
@@ -50,6 +51,7 @@ def smtp():
 
     print("Your SMTP settings have been saved")
 
+
 def grab_smtp():
     #grab SMTP information
 
@@ -63,8 +65,10 @@ def grab_smtp():
 
     return server, port, from_email, password
 
+
 def error_msg():
     print("Check your API keys or your internet connection")
+
 
 def grab_headers():
     access_key = ''
@@ -82,6 +86,7 @@ def grab_headers():
     #set the header
     headers = {'Content-type':'application/json','X-ApiKeys':'accessKey='+access_key+';secretKey='+secret_key}
     return headers
+
 
 def get_data(url_mod):
     url = "https://cloud.tenable.com"
@@ -106,6 +111,7 @@ def get_data(url_mod):
     except ConnectionError:
         print("Check your connection...You got a connection error")
     #Trying to catch API errors
+
 
 def delete_data(url_mod):
     url = "https://cloud.tenable.com"
@@ -133,6 +139,7 @@ def delete_data(url_mod):
     except ConnectionError:
         print("Check your connection...You got a connection error")
 
+
 def special_get(url_mod,querystring):
     url = "https://cloud.tenable.com"
     headers = grab_headers()
@@ -156,6 +163,7 @@ def special_get(url_mod,querystring):
     except ConnectionError:
         print("Check your connection...You got a connection error")
 
+
 def quick_post(url_mod):
     url = "https://cloud.tenable.com"
     headers = grab_headers()
@@ -177,6 +185,7 @@ def quick_post(url_mod):
         print("Ahh now you've done it...")
         print("double check your id")
 
+
 def post_data(url_mod,payload):
     #Set the URL endpoint
     url = "https://cloud.tenable.com"
@@ -191,6 +200,7 @@ def post_data(url_mod,payload):
 
     return data
 
+
 def put_data(url_mod,payload):
     #Set the URL endpoint
     url = "https://cloud.tenable.com"
@@ -202,6 +212,7 @@ def put_data(url_mod,payload):
     r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
     #retreive data in json format
     return
+
 
 def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
@@ -256,6 +267,7 @@ def vuln_export():
     except KeyError:
         print("Well this is a bummer; you don't have permissions to download Vuln data :( ")
 
+
 def asset_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 2660000
@@ -309,6 +321,7 @@ def asset_export():
     except KeyError:
         print("Well this is a bummer; you don't have permissions to download Asset data :( ")
 
+
 def plugin_by_ip(cmd,plugin):
     try:
         with open('tio_vuln_data.txt') as json_file:
@@ -327,6 +340,7 @@ def plugin_by_ip(cmd,plugin):
         print("If an export doesn't start check your API keys")
         vuln_export()
         asset_export()
+
 
 def find_by_plugin(plugin):
     try:
@@ -349,6 +363,7 @@ def find_by_plugin(plugin):
         vuln_export()
         asset_export()
 
+
 def print_data(data):
     try:
         #there may be multiple outputs
@@ -358,6 +373,7 @@ def print_data(data):
     except:
         pass
 
+
 def nessus_scanners():
     try:
         data = get_data('/scanners')
@@ -366,6 +382,7 @@ def nessus_scanners():
             print(str(data["scanners"][x]["name"]) + " : " + str(data["scanners"][x]["id"]))
     except:
         print("You may not have access...Check permissions...or Keys")
+
 
 def webscan(targets, scanner_id, template):
 
@@ -384,6 +401,7 @@ def webscan(targets, scanner_id, template):
     print(targets, " : ", scan_id)
     return
 
+
 def find_target_group(tg_name):
     data = get_data('/target-groups')
     group_id = 0
@@ -395,6 +413,7 @@ def find_target_group(tg_name):
         except:
             pass
     return group_id
+
 
 def create_target_group(tg_name, tg_list):
 
@@ -418,6 +437,7 @@ def create_target_group(tg_name, tg_list):
             post_data('/target-groups', payload)
         except:
             print("An Error Occurred")
+
 
 def csv_export():
     with open('tio_asset_data.txt') as json_file:
@@ -487,6 +507,7 @@ def csv_export():
                 except IndexError:
                     pass
 
+
 def agent_export():
     data = get_data('/scanners')
 
@@ -519,6 +540,7 @@ def agent_export():
 
                     agent_writer.writerow([name, ip, platform, connect_time, scanned_time, status])
     return
+
 
 def webapp_export():
 
@@ -571,6 +593,7 @@ def webapp_export():
                     csv_list.append(message)
                     agent_writer.writerow(csv_list)
 
+
 def consec_export():
     data = get_data('/container-security/api/v2/images?limit=1000')
     with open('consec_data.csv', mode='w') as csv_file:
@@ -584,6 +607,7 @@ def consec_export():
             docker_id = images["imageHash"]
             vulns = images["numberOfVulns"]
             agent_writer.writerow([name, docker_id, vulns])
+
 
 def scan_details(uuid):
     # pull the scan data
@@ -613,6 +637,7 @@ def scan_details(uuid):
         print("         " + details["notes"][x]["message"] + "\n")
     return
 
+
 def send_email(from_email, to_email, msg, mail_server, password, port):
     print(msg)
     try:
@@ -627,6 +652,7 @@ def send_email(from_email, to_email, msg, mail_server, password, port):
     except Exception as E:
         print(E)
         print('Something went wrong...Your email information my be incorrect')
+
 
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
@@ -902,6 +928,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 
                         pass
 
+
 @cli.command(help="Export data into a CSV")
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
@@ -927,6 +954,7 @@ def export(assets, agents, webapp, consec):
         print("Exporting your data now. Saving consec_data.csv now...")
         print()
         consec_export()
+
 
 #This will soon be deprecated in Favor of creating and using Tags
 @cli.command(help="Create Target Groups ex: Plugin ID or Text to search for")
@@ -1011,6 +1039,7 @@ def group(plugin, pid, pname, pout):
             create_target_group("Navi_by_AWS_Connector_info",target_list)
         except:
             print("try again")
+
 
 @cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
@@ -1116,14 +1145,15 @@ def find(plugin, docker, webapp, creds, time, ghost):
         except:
             print("Check your API keys or your internet connection")
 
+
 @cli.command(help="Get the Latest Scan information")
 @click.option('-latest', is_flag=True, help="Report the Last Scan Details")
-@click.option('--container', default='', help='Report CVSS 7 or above by Container ID. Use: list -containers to find Containers')
+@click.option('--container', default='', help='Report CVSS 7 or above by \'/repository/image/tag\'')
 @click.option('--docker', default='', help='Report CVSS 7 or above by Docker ID')
 @click.option('--comply', default='', help='Check to see if your container complies with your Corporate Policy')
 @click.option('--details', default='', help='Report Scan Details including Vulnerability Counts by Scan ID')
 @click.option('--summary', default='', help="Report Scan Summary information by Scan ID")
-def report(latest,container,docker,comply, details, summary):
+def report(latest, container, docker, comply, details, summary):
     #get the latest Scan Details
     if latest:
         try:
@@ -1161,16 +1191,15 @@ def report(latest,container,docker,comply, details, summary):
 
     if container:
         try:
-            querystring = {"image_id": str(container)}
-            data = special_get('/container-security/api/v1/reports/by_image', querystring)
+            data = get_data('/container-security/api/v2/reports' + str(container))
             try:
                 for vulns in data['findings']:
                     if float(vulns['nvdFinding']['cvss_score']) >= 7:
                         print("CVE ID :", vulns['nvdFinding']['cve'])
                         print("CVSS Score : ",vulns['nvdFinding']['cvss_score'])
-                        print("--------------------------------------------------")
-                        print("Description : ", vulns['nvdFinding']['description'])
-                        print("\nRemediation :", vulns['nvdFinding']['remediation'])
+                        print("----------------------")
+                        print("\nDescription : \n\n", vulns['nvdFinding']['description'])
+                        print("\nRemediation : \n\n", vulns['nvdFinding']['remediation'])
                         print("----------------------END-------------------------\n")
             except(TypeError):
                 print("This Container has no data or is not found")
@@ -1188,9 +1217,9 @@ def report(latest,container,docker,comply, details, summary):
                     if float(vulns['nvdFinding']['cvss_score']) >= 7:
                         print("CVE ID :", vulns['nvdFinding']['cve'])
                         print("CVSS Score : ",vulns['nvdFinding']['cvss_score'])
-                        print("--------------------------------------------------")
-                        print("Description : ", vulns['nvdFinding']['description'])
-                        print("\nRemediation :", vulns['nvdFinding']['remediation'])
+                        print("-----------------------")
+                        print("\nDescription \n\n: ", vulns['nvdFinding']['description'])
+                        print("\nRemediation : \n\n", vulns['nvdFinding']['remediation'])
                         print("----------------------END-------------------------\n")
             except(TypeError):
                 print("This Container has no data or is not found")
@@ -1201,8 +1230,8 @@ def report(latest,container,docker,comply, details, summary):
 
     if comply:
         try:
-            #data = get_data('/container-security/api/v1/policycompliance?image_id=' + str(comply))
-            data = get_data('/conatiner-security/api/v2/reports/'+ str(comply))
+            data = get_data('/container-security/api/v1/policycompliance?image_id=' + str(comply))
+            #data = get_data('/conatiner-security/api/v2/reports/'+ str(comply))
             print("Status : ", data['status'])
         except:
             error_msg()
@@ -1251,6 +1280,7 @@ def report(latest,container,docker,comply, details, summary):
         except:
             error_msg()
 
+
 @cli.command(help="Test the API ex: /scans ")
 @click.argument('url')
 def api(url):
@@ -1259,6 +1289,7 @@ def api(url):
         pprint.pprint(data)
     except:
         error_msg()
+
 
 @cli.command(help="Get a List of Scanners, Users, Scans, Assets found in the last 30 days, IP exclusions.  Retreive All containers and Vulnerability Score")
 @click.option('-scanners', is_flag=True, help="List all of the Scanners")
@@ -1306,11 +1337,14 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             data = get_data('/container-security/api/v2/images?limit=1000')
             print("Container Name".ljust(15) +" | " + "Repository ID".ljust(20) + " | " +"Tag".ljust(10) + " | " + "Docker ID".ljust(15) + " | " + "# of Vulns".ljust(10))
             print("-----------------------------------------------------------------------------------")
-
-            for images in data["items"]:
-                print(str(images["name"]).ljust(15) + " | " + str(images["repoName"]).ljust(20) + " | " + str(images["tag"]).ljust(10) + " | " + str(images["imageHash"]).ljust(15) + " | " + str(images["numberOfVulns"]).ljust(25))
-        except:
+            try:
+                for images in data["items"]:
+                    print(str(images["name"]).ljust(15) + " | " + str(images["repoName"]).ljust(20) + " | " + str(images["tag"]).ljust(10) + " | " + str(images["imageHash"]).ljust(15) + " | " + str(images["numberOfVulns"]).ljust(25))
+            except:
+                pass
+        except Exception as E:
             error_msg()
+            print(E)
 
     if logs:
         try:
@@ -1554,6 +1588,7 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         except:
             error_msg()
 
+
 @cli.command(help="Quickly Scan a Target")
 @click.argument('targets')
 def scan(targets):
@@ -1610,6 +1645,7 @@ def scan(targets):
     except:
         error_msg()
 
+
 @cli.command(help="Create a Web App scan from a CSV file")
 @click.argument('csv_input')
 def spider(csv_input):
@@ -1656,6 +1692,7 @@ def spider(csv_input):
     except:
         error_msg()
 
+
 @cli.command(help="Enter in a Mac Address to find the Manufacturer")
 @click.argument('address')
 def mac(address):
@@ -1676,30 +1713,36 @@ def mac(address):
     except:
         error_msg()
 
+
 @cli.command(help="Pause a running Scan")
 @click.argument('Scan_id')
 def pause(scan_id):
     quick_post('/scans/' + str(scan_id) + '/pause')
+
 
 @cli.command(help="Resume a paused Scan")
 @click.argument('scan_id')
 def resume(scan_id):
     quick_post('/scans/' + str(scan_id) +'/resume')
 
+
 @cli.command(help="Stop a Running Scan")
 @click.argument('scan_id')
 def stop(scan_id):
     quick_post('/scans/' + str(scan_id) +'/stop')
+
 
 @cli.command(help="Start a valid Scan")
 @click.argument('scan_id')
 def start(scan_id):
     quick_post('/scans/' + str(scan_id) + '/launch')
 
+
 @cli.command(help="Update local repository")
 def update():
     vuln_export()
     asset_export()
+
 
 @cli.command(help="Delete an Object by it's ID")
 @click.argument('id')
@@ -1708,7 +1751,8 @@ def update():
 @click.option('-tgroup', is_flag=True, help='Delete a target-group by target-group ID')
 @click.option('-policy', is_flag=True, help='Delete a Policy by Policy ID')
 @click.option('-asset', is_flag=True, help='Delete an Asset by Asset UUID')
-def delete(id, scan, agroup, tgroup, policy, asset):
+@click.option('-container', is_flag=True, help='Delete a container by \'/repository/image/tag\'')
+def delete(id, scan, agroup, tgroup, policy, asset, container):
 
     if scan:
         print("I'm deleting your Scan Now")
@@ -1730,6 +1774,12 @@ def delete(id, scan, agroup, tgroup, policy, asset):
         print("I'm deleting your asset Now")
         delete_data('/workbenches/assets/' + str(id))
 
+    if container:
+        print("I'm deleting your container")
+        delete_data('/container-security/api/v2/images'+ str(container))
+
+
+
 @cli.command(help="Get Scan Status")
 @click.argument('Scan_id')
 def status(scan_id):
@@ -1740,6 +1790,7 @@ def status(scan_id):
         print()
     except:
         error_msg()
+
 
 @cli.command(help="Manually add an asset to Tenable.io")
 @click.option('--ip', default='', help="IP address(s) of new asset")
@@ -1785,6 +1836,7 @@ def add(ip, mac, netbios, fqdn, hostname):
         print("Your Import ID is : ", data['asset_import_job_uuid'])
     except:
         error_msg()
+
 
 @cli.command(help="Mail yourself a Report")
 @click.option('-latest', is_flag=True, help='Email Vulnerability Summary Information')
@@ -1939,12 +1991,14 @@ def mail(latest, consec, webapp):
         print("Run the 'SMTP' command to correct your information")
         print(E)
 
+
 @cli.command(help="Spin up a http server to extract data from the container")
 def http():
     try:
         os.system("python3 -m http.server")
     except:
         print("This feature is for container's only")
+
 
 @cli.command(help="Open up a Netcat listener to accept files over port 8000")
 def listen():
@@ -1955,6 +2009,7 @@ def listen():
     except:
         print("This command uses netcat and is only meant for Navi running in a docker container")
         print("You probably don't have netcat installed")
+
 
 if __name__ == '__main__':
     cli()
