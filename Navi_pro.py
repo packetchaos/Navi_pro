@@ -201,6 +201,23 @@ def post_data(url_mod,payload):
     return data
 
 
+def tag_post(url_mod,payload):
+    #Set the URL endpoint
+    url = "https://cloud.tenable.com"
+
+    #grab headers for auth
+    headers = grab_headers()
+
+    #send Post request to API endpoint
+    r = requests.post(url + url_mod, json=payload, headers=headers, verify=False)
+    #retreive data in json format
+    data = r.json()
+
+    resp = r.status_code
+
+    return data, resp
+
+
 def put_data(url_mod,payload):
     #Set the URL endpoint
     url = "https://cloud.tenable.com"
@@ -214,9 +231,15 @@ def put_data(url_mod,payload):
     return
 
 
+def get_licensed():
+    data = get_data('/workbenches/asset-stats?date_range=90&filter.0.filter=is_licensed&filter.0.quality=eq&filter.0.value=true')
+    number_of_assets = data['scanned']
+    return number_of_assets
+
+
 def vuln_export():
     # Set the payload to the maximum number of assets to be pulled at once
-    thirty_days = time.time() - 2660000
+    thirty_days = time.time() - 7776000#2660000
     pay_load = {"num_assets": 5000, "filters": {"last_found": int(thirty_days)}}
     try:
         # request an export of the data
@@ -270,7 +293,7 @@ def vuln_export():
 
 def asset_export():
     # Set the payload to the maximum number of assets to be pulled at once
-    thirty_days = time.time() - 2660000
+    thirty_days = time.time() - 7776000#2660000
     pay_load = {"chunk_size": 5000, "filters": {"last_assessed": int(thirty_days)}}
     try:
         # request an export of the data
@@ -609,6 +632,29 @@ def consec_export():
             agent_writer.writerow([name, docker_id, vulns])
 
 
+def licensed_export():
+    with open('tio_asset_data.txt') as json_file:
+        data = json.load(json_file)
+        with open('licensed_data.csv', mode='w') as csv_file:
+            agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
+            header_list = ["IP Address", "FQDN", "UUID", "Last Licensed Scan Date"]
+            agent_writer.writerow(header_list)
+            for asset in data:
+                agent_id = asset['id']
+                ipv4 = asset['ipv4s'][0]
+                try:
+                    fqdn = asset['fqdns'][0]
+                except:
+                    fqdn = " "
+                try:
+                    licensed_date = asset["last_licensed_scan_date"]
+                    if "Z" in licensed_date:
+                        #print(ipv4, fqdn, agent_id, licensed_date)
+                        agent_writer.writerow([ipv4,fqdn,agent_id, licensed_date])
+                except:
+                    pass
+
+
 def scan_details(uuid):
     # pull the scan data
     details = get_data('/scans/' + str(uuid))
@@ -833,7 +879,6 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
     if details:
         with open('tio_asset_data.txt') as json_file:
             data = json.load(json_file)
-            #pprint.pprint(data[5])
 
             for x in range(len(data)):
                 try:
@@ -841,7 +886,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
                     ip = data[x]['ipv4s'][0]
                     id = data[x]['id']
                     if ip == ipaddr:
-                        print("\nTenable UUID")
+                        print("\nTenable ID")
                         print("--------------")
                         print(data[x]['id'])
 
@@ -934,7 +979,8 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
 @click.option('-agents', is_flag=True, help="Export all Agent data into a CSV")
 @click.option('-webapp', is_flag=True, help="Export Webapp Scan Summary into a CSV")
 @click.option('-consec', is_flag=True, help="Export Container Security Summary into a CSV")
-def export(assets, agents, webapp, consec):
+@click.option('-licensed', is_flag=True, help="Export a List of all the Licensed Assets")
+def export(assets, agents, webapp, consec, licensed):
     if assets:
         print("Exporting your data now. Saving asset_data.csv now...")
         print()
@@ -954,6 +1000,10 @@ def export(assets, agents, webapp, consec):
         print("Exporting your data now. Saving consec_data.csv now...")
         print()
         consec_export()
+    if licensed:
+        print("Exporting your data now. Saving licensed_data.csv now...")
+        print()
+        licensed_export()
 
 
 #This will soon be deprecated in Favor of creating and using Tags
@@ -1040,6 +1090,98 @@ def group(plugin, pid, pname, pout):
         except:
             print("try again")
 
+@cli.command(help="Create a Tag Category/Value Pair")
+@click.option('--c', default='', help="Create a Tag with the following Category name")
+@click.option('--v', default='', help="Create a Tag Value; requires --c and Category Name or UUID")
+@click.option('--d', default='This Tag was created/updated by Navi', help="Description for your Tag")
+@click.option('--plugin', default='', help="Create a tag by plugin ID")
+@click.option('--name', default='', help="Create a Tag by the text found in the Plugin Name")
+def tag(c, v, d, plugin, name):
+
+    if c == '':
+        print("Category is required.  Please use the --c command")
+
+    if v == '':
+        print("Value is required. Please use the --v command")
+
+    if plugin:
+        tag_list = []
+        ip_list = ""
+        try:
+            with open('tio_vuln_data.txt') as json_file:
+                plugin_data = json.load(json_file)
+                #pprint.pprint(plugin_data[0])
+                #asset_uuid = plugin_data[0]['asset']['uuid']
+                #print(asset_uuid)
+
+                for x in plugin_data:
+                    if str(x['plugin']['id']) == plugin:
+                        #set IP to search with later
+                        ip = x['asset']['ipv4']
+
+                        #ensure the ip isn't already in the list
+                        if ip not in tag_list:
+                            tag_list.append(ip)
+                            ip_list = ip_list + "," + ip
+                    else:
+                        pass
+            if ip_list == '':
+                print("\nYour tag resulted in 0 Assets, therefore the tag wasn't created\n")
+            else:
+                payload = {"category_name":str(c), "value":str(v), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
+                data, stat = tag_post('/tags/values', payload)
+
+                if stat == 400:
+                    print("Your Tag has not be created; Update functionality hasn't been added yet")
+                    print(data['error'])
+                else:
+                    pprint.pprint(data)
+                    print("\nI've created your new Tag - {} : {}\n".format(c,v))
+                    print("The Category UUID is : {}\n".format(data['category_uuid']))
+                    print("The Value UUID is : {}\n".format(data['uuid']))
+                    print("The following IPs were added to the Tag:")
+                    print(tag_list)
+                    print(stat)
+        except:
+            print("Try again..")
+
+    if name != '':
+        tag_list = []
+        ip_list = ""
+        try:
+            with open('tio_vuln_data.txt') as json_file:
+                plugin_data = json.load(json_file)
+                for x in plugin_data:
+                    plugin_name = x['plugin']['name']
+                    if name in plugin_name:
+                        #set IP to search with later
+                        ip = x['asset']['ipv4']
+                        #ensure the ip isn't already in the list
+                        if ip not in tag_list:
+                            tag_list.append(ip)
+                            ip_list = ip_list + "," + ip
+                    else:
+                        pass
+            if ip_list == '':
+                print("\nYour tag resulted in 0 Assets, therefore the tag wasn't created\n")
+            else:
+                payload = {"category_name":str(c), "value":str(v), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
+                data, stat = tag_post('/tags/values', payload)
+
+                if stat == 400:
+                    print("Your Tag has not be created; Update functionality hasn't been added yet")
+                    print(data['error'])
+
+                else:
+
+                    print("\nI've created your new Tag - {} : {}\n".format(c,v))
+                    print("The Category UUID is : {}\n".format(data['category_uuid']))
+                    print("The Value UUID is : {}\n".format(data['uuid']))
+                    print("The following IPs were added to the Tag:\n")
+                    print(tag_list)
+
+        except:
+            print("Try again..")
 
 @cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
@@ -1308,7 +1450,10 @@ def api(url):
 @click.option('-agents', is_flag=True, help="Print Agent information")
 @click.option('-webapp', is_flag=True, help='Print Web App Scans')
 @click.option('-tgroup', is_flag=True, help='Print Target Groups')
-def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents, webapp, tgroup):
+@click.option('-licensed', is_flag=True, help='Print License information')
+@click.option('-tags', is_flag=True, help='Print Tag Categories and values')
+@click.option('-categories', is_flag=True, help='Print all of the Tag Categories and their UUIDs')
+def list(scanners, users, exclusions, containers, logs, running, scans, nnm, assets, policies, connectors, agroup, status, agents, webapp, tgroup, licensed, tags, categories):
 
     if scanners:
         nessus_scanners()
@@ -1501,14 +1646,18 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
     if status:
         try:
             data = get_data("/server/properties")
+            session_data = get_data("/session")
             print("\nTenable IO Information")
             print("-----------------------")
-            print("Container ID :", data["analytics"]["key"])
+            print("Container ID : ", session_data["container_id"])
+            print("Container UUID :", session_data["container_uuid"])
+            print("Contianer Name : ", session_data["container_name"])
             print("Site ID :", data["analytics"]["site_id"])
             print("Region : ", data["region"])
 
             print("\nLicense information")
             print("--------------------")
+            print("Licensed Assets : ", get_licensed())
             print("Agents Used : ", data["license"]["agents_used"])
             print("Expiration Date : ", data["license"]["expiration_date"])
             print("Scanners Used : ", data["license"]["scanners_used"])
@@ -1583,11 +1732,57 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                 print("Name : ", targets['name'])
                 print("Owner : ", targets['owner'])
                 print("Target Group ID : ", targets['id'])
-                print("Members : ", ['members'])
+                print("Members : ", targets['members'])
                 print()
         except:
             error_msg()
 
+    if licensed:
+        print("Licensed Count : ", get_licensed())
+        print()
+        with open('tio_asset_data.txt') as json_file:
+            data = json.load(json_file)
+            print("IP Address".ljust(15), "Full Qualified Domain Name".ljust(50), "Licensed Date")
+            print("-".ljust(91,"-"))
+            print()
+            for asset in data:
+                ipv4 = asset['ipv4s'][0]
+                try:
+                    fqdn = asset['fqdns'][0]
+                except:
+                    fqdn = " "
+                try:
+                    licensed_date = asset["last_licensed_scan_date"]
+                    if "Z" in licensed_date:
+                        print(str(ipv4).ljust(15), str(fqdn).ljust(50),licensed_date)
+                except:
+                    pass
+
+    if tags:
+        data = get_data('/tags/values')
+        print("\nTags".ljust(30), "Value".ljust(25), "Value UUID")
+        print('-'.rjust(92,'-'),"\n")
+        for tag_values in data['values']:
+            try:
+                tag_value = tag_values['value']
+                uuid = tag_values['uuid']
+            except:
+                tag_value = "Value Not Set Yet"
+                uuid = "NO Value set"
+            print(str(tag_values['category_name']).ljust(25), " : ", str(tag_value).ljust(25), str(uuid).ljust(25))
+        print()
+
+    if categories:
+        data = get_data('/tags/categories')
+        print("\nTag Categories".ljust(30), "Category UUID")
+        print('-'.rjust(50,'-'),"\n")
+        for cats in data['categories']:
+
+            category_name = cats['name']
+            category_uuid = cats['uuid']
+
+            print(str(category_name).ljust(25), " : ", str(category_uuid).ljust(25))
+        print()
 
 @cli.command(help="Quickly Scan a Target")
 @click.argument('targets')
@@ -1752,7 +1947,9 @@ def update():
 @click.option('-policy', is_flag=True, help='Delete a Policy by Policy ID')
 @click.option('-asset', is_flag=True, help='Delete an Asset by Asset UUID')
 @click.option('-container', is_flag=True, help='Delete a container by \'/repository/image/tag\'')
-def delete(id, scan, agroup, tgroup, policy, asset, container):
+@click.option('-tag', is_flag=True, help="Delete a Tag by Value UUID")
+@click.option('-category', is_flag=True, help="Delete a Tag Category by UUID")
+def delete(id, scan, agroup, tgroup, policy, asset, container, tag, category):
 
     if scan:
         print("I'm deleting your Scan Now")
@@ -1776,8 +1973,15 @@ def delete(id, scan, agroup, tgroup, policy, asset, container):
 
     if container:
         print("I'm deleting your container")
-        delete_data('/container-security/api/v2/images'+ str(container))
+        delete_data('/container-security/api/v2/images' + str(id))
 
+    if tag:
+        print("I'm deleting your Tag Value")
+        delete_data('/tags/values/' + str(id))
+
+    if category:
+        print("I'm Deleting your Category")
+        delete_data('/tags/categories/'+str(id))
 
 
 @cli.command(help="Get Scan Status")

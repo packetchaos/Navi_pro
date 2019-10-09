@@ -50,7 +50,7 @@ To extract data from the container you need to run an http server.  Use the belo
 
     Navi_pro.py http
 
- * Navigate to the website: http://<Host-IP>:8000
+ * Navigate to the website: http://127.0.0.1:8000
  * Simply download the item you want by clicking on it.
 
 ## Usage
@@ -60,7 +60,7 @@ Before you begin you need the Keys! The program will continue to error out witho
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
-There are nine core commands: 
+There are ten core commands: 
  * api - query api endpoints
  * ip - find details on Specific IPs
  * find - Find information: credential failures, containers, etc
@@ -70,8 +70,10 @@ There are nine core commands:
  * export - Export Agent or Asset data into a CSV
  * delete - Delete an object by it's ID
  * mail - Mail a report 
+ * Tag - Create a Category/Value Pair
  
- There are eleven single use commands: 
+ There are fifteen single use commands: 
+ * add - Manually Add an asset to Tenable.io
  * scan - Create and lanuch a scan
  * start - Start a scan by Scan-ID
  * pause - Pause a scan by Scan-ID
@@ -85,6 +87,7 @@ There are nine core commands:
  * keys - Add or update your keys
  * http - Run an http server to extract files from the container
  * listen - Run a netcat listener to receive a single file
+ * smtp - Enter or update your SMTP information
  
 
 ### Explore the Tenable.io API - 'api'
@@ -180,7 +183,10 @@ There are nine core commands:
   * -agents --> Displays information on Agents
   * -webapp --> Displays information on Web app Scans
   * -tgroup --> Displays information about Target Groups
-
+  * -licensed --> Displays All of your Licensed assets
+  * -tags --> Displays Tag Categories, Values and Value UUID
+  * -categories --> Displays Tag Categories and the Category UUID
+  
 ### Examples
     Navi_pro.py list -scanners
 
@@ -203,18 +209,30 @@ There are nine core commands:
 
     Navi_pro.py group aws
 
-### Export Asset, Agent, or Webapp Data - 'export'
+### Tag assets by Plugin Name, or Plugin ID
+   * --c --> Create a Tag with this Category - Required
+   * --v --> Create a Tag with this Value - Required
+   * --d --> Create a description for your Tag - Optional (TEXT"
+   * --plugin --> Define a Tag by a plugin ID - Optional (TEXT)
+   * --name --> Define a tag by text found in a plugin Name - Optional (TEXT)
+
+### Examples
+    Navi_pro.py tag --c "My Category" --v "My Value" --d "My description" --plugin 93561
+    Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
+    
+### Export Asset, Agent, Consec, or Webapp Data - 'export'
 
    * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
    * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
    * -webapp --> Export Web applications into a CSV: FQDN, Critical, High, Medium, Low
    * -consec --> Export Container Security summary info into a CSV.
-
+   * -licensed --> Export a List of all Licensed Assets into a CSV.
+   
 ### Examples
 
     Navi_pro.py export -assets
     
-    Navi_pro.py export -agents -assets -webapp -consec
+    Navi_pro.py export -agents -assets -webapp -consec -licensed
 
 ### Delete an Object by an ID
 * scan - Delete a scan by ID
@@ -222,6 +240,9 @@ There are nine core commands:
 * tgroup - Delete a Target Group
 * policy - Delete a Policy
 * asset - Delete an asset
+* container - Delete a container by container ID
+* tag - Delete a Tag value by Value UUID
+* category - Delete a Tag category by the Category UUID
 
 ### Examples
 
