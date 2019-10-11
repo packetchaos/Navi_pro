@@ -201,6 +201,21 @@ def post_data(url_mod,payload):
     return data
 
 
+def lumin_post(url_mod,payload):
+    #Set the URL endpoint
+    url = "https://cloud.tenable.com"
+
+    #grab headers for auth
+    headers = grab_headers()
+
+    #send Post request to API endpoint
+    r = requests.post(url + url_mod, json=payload, headers=headers, verify=False)
+    #retreive data in json format
+    data = r.status_code
+
+    return data
+
+
 def tag_post(url_mod,payload):
     #Set the URL endpoint
     url = "https://cloud.tenable.com"
@@ -1004,6 +1019,106 @@ def export(assets, agents, webapp, consec, licensed):
         print("Exporting your data now. Saving licensed_data.csv now...")
         print()
         licensed_export()
+
+def tag_Checker(tags, cat, value):
+        answer = 'no'
+        for tag in tags:
+                if cat == tag['key']:
+                        if value == tag['value']:
+                           answer = 'yes'
+                        else:
+                            pass
+                else:
+                        pass
+        return answer
+
+@cli.command(help="Adjust ACRs in Lumin by tag")
+@click.option('--acr', default='', help='Set the ACR')
+@click.option('--category', default='', help="Category to use")
+@click.option('--value', default='', help="Value to use")
+@click.option('--note', default="Navi Generated", help="Enter a Note to your ACR Rule")
+#@click.option('--uuid', default='', help="A Value UUID to use")
+def lumin(acr, value, category, note):
+    if category == '':
+        print("We require a Tag Category to update the ACR by Tag")
+        exit()
+
+    if value == '':
+        print("We require a Tag value to update the ACR by Tag")
+        exit()
+
+    if int(acr) in range(1,11):
+         with open('tio_asset_data.txt') as json_file:
+            data = json.load(json_file)
+            lumin_list = []
+            for asset in data:
+                #asset_id = asset['ipv4s'][0]
+                tags = asset['tags']
+
+                check_for_no = tag_Checker(tags, "NO", "UPDATE")
+                if check_for_no == 'no':
+                        check_match = tag_Checker(tags, "Navi", "Test")
+                        if check_match == 'yes':
+                                for ips in asset['ipv4s']:
+                                        lumin_list.append(ips)
+                                print(ips)
+                else:
+                        pass
+            if lumin_list == []:
+                print("We did not find a Tag with that Category or Value\n")
+                print("If you think this is an error, surround your category and value in \"\"")
+                exit()
+            else:
+                choice = []
+                print("\n1. Business Critical")
+                biz = "Business Critical"
+
+                print("2. In Scope For Compliance")
+                comp = "In Scope For Compliance"
+
+                print("3. Existing Mitigation Control")
+                control = "Existing Mitigation Control"
+
+                print("4. Dev Only")
+                dev = "Dev Only"
+
+                print("5. Key Drivers does not match")
+                driver = "Key Drivers does not match"
+
+                print("6. other\n")
+                other = "Other"
+
+                string_choice = input("Please Choose the Reasons for the Asset criticality.\nSeparate multiple choices by a comma: e.g: 1,2,4\n")
+
+                if "1" in string_choice:
+                    choice.append(biz)
+                if "2" in string_choice:
+                    choice.append(comp)
+                if "3" in string_choice:
+                    choice.append(control)
+                if "4" in string_choice:
+                    choice.append(dev)
+                if "5" in string_choice:
+                    choice.append(driver)
+                if "6" in string_choice:
+                    choice.append(other)
+
+                note = note + " - Navi Generated"
+                lumin_payload = [{"acr_score": int(acr), "reason": choice, "note": note, "asset":[{"ipv4":lumin_list}]}]
+                change_acr = lumin_post('/api/v2/assets/bulk-jobs/acr', lumin_payload)
+                if change_acr == 202:
+                    print("Success!")
+                else:
+                    print("Check your Request.  Below is the payload I sent.\n")
+                    print(lumin_payload)
+
+                #print(lumin_list)
+                #print(acr)
+                #print(choice)
+                #print(change_acr)
+                #print(lumin_payload)
+    else:
+        print("You can't have a score below 1 or higher than 10")
 
 
 #This will soon be deprecated in Favor of creating and using Tags

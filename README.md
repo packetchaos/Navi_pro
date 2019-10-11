@@ -216,6 +216,19 @@ There are ten core commands:
    * --plugin --> Define a Tag by a plugin ID - Optional (TEXT)
    * --name --> Define a tag by text found in a plugin Name - Optional (TEXT)
 
+### Bulk Adjust ACRs based on a Tag
+   * --acr --> The new ACR value (1-10)
+   * --category --> The Tag Category to use
+   * --value --> The Tag value to use
+   * --note --> Justification for ACR change
+   
+### Note - ACR Exceptions?
+    Tag your assets with "NO:UPDATE" if you don't want to be affected by bulk ACR changes
+    Category = NO
+    Value = UPDATE
+   
+### Examples
+    Navi_pro.py --acr 10 --category "Applications" --value "Core Business" --note "Main application"
 ### Examples
     Navi_pro.py tag --c "My Category" --v "My Value" --d "My description" --plugin 93561
     Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
