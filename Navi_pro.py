@@ -1034,16 +1034,16 @@ def tag_Checker(tags, cat, value):
 
 @cli.command(help="Adjust ACRs in Lumin by tag")
 @click.option('--acr', default='', help='Set the ACR')
-@click.option('--category', default='', help="Category to use")
-@click.option('--value', default='', help="Value to use")
+@click.option('--c', default='', help="Category to use")
+@click.option('--v', default='', help="Value to use")
 @click.option('--note', default="Navi Generated", help="Enter a Note to your ACR Rule")
 #@click.option('--uuid', default='', help="A Value UUID to use")
-def lumin(acr, value, category, note):
-    if category == '':
+def lumin(acr, v, c, note):
+    if c == '':
         print("We require a Tag Category to update the ACR by Tag")
         exit()
 
-    if value == '':
+    if v == '':
         print("We require a Tag value to update the ACR by Tag")
         exit()
 
@@ -1057,11 +1057,11 @@ def lumin(acr, value, category, note):
 
                 check_for_no = tag_Checker(tags, "NO", "UPDATE")
                 if check_for_no == 'no':
-                        check_match = tag_Checker(tags, "Navi", "Test")
+                        check_match = tag_Checker(tags, c, v)
                         if check_match == 'yes':
                                 for ips in asset['ipv4s']:
                                         lumin_list.append(ips)
-                                print(ips)
+                                
                 else:
                         pass
             if lumin_list == []:
@@ -1250,13 +1250,13 @@ def tag(c, v, d, plugin, name):
                     print("Your Tag has not be created; Update functionality hasn't been added yet")
                     print(data['error'])
                 else:
-                    pprint.pprint(data)
+                    #pprint.pprint(data)
                     print("\nI've created your new Tag - {} : {}\n".format(c,v))
                     print("The Category UUID is : {}\n".format(data['category_uuid']))
                     print("The Value UUID is : {}\n".format(data['uuid']))
                     print("The following IPs were added to the Tag:")
                     print(tag_list)
-                    print(stat)
+
         except:
             print("Try again..")
 
