@@ -215,7 +215,12 @@ There are ten core commands:
    * --d --> Create a description for your Tag - Optional (TEXT"
    * --plugin --> Define a Tag by a plugin ID - Optional (TEXT)
    * --name --> Define a tag by text found in a plugin Name - Optional (TEXT)
-
+   * --group --> Defina a tag by a Agent Group Name - Optional (TEXT)
+### Examples
+    Navi_pro.py tag --c "My Category" --v "My Value" --d "My description" --plugin 93561
+    Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
+    Navi_pro.py tag --c "Agent Group" --v "Linux Agents" --group "Linux"
+    
 ### Bulk Adjust ACRs based on a Tag
    * --acr --> The new ACR value (1-10)
    * --category --> The Tag Category to use
@@ -229,10 +234,7 @@ There are ten core commands:
    
 ### Examples
     Navi_pro.py --acr 10 --category "Applications" --value "Core Business" --note "Main application"
-### Examples
-    Navi_pro.py tag --c "My Category" --v "My Value" --d "My description" --plugin 93561
-    Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
-    
+
 ### Export Asset, Agent, Consec, or Webapp Data - 'export'
 
    * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc

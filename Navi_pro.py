@@ -243,7 +243,7 @@ def put_data(url_mod,payload):
     #send Post request to API endpoint
     r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
     #retreive data in json format
-    return
+    return 
 
 
 def get_licensed():
@@ -715,6 +715,25 @@ def send_email(from_email, to_email, msg, mail_server, password, port):
         print('Something went wrong...Your email information my be incorrect')
 
 
+def update_tag(c,v,list):
+    print("Your tag is being updated")
+    tag_data = get_data('/tags/values')
+    try:
+        for tag in tag_data['values']:
+            if tag['category_name'] == str(c):
+                if tag['value'] == str(v):
+                    try:
+                        tag_uuid = tag['uuid']
+                        payload = {"action":"add", "assets":list, "tags":[tag_uuid]}
+                        data = post_data('/tags/assets/assignments', payload)
+                        print("Job UUID : ", data['job_uuid'])
+                        print("\nTag should be update within a few minutes\n")
+                    except:
+                        pass
+
+    except:
+        pass
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -964,7 +983,11 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
                             for vuln in asset_info['info']['counts']['vulnerabilities']['severities']:
                                 print(vuln["name"]," : ", vuln["count"])
 
-                            print("\nExposure Score : ", asset_info['info']['exposure_score'])
+                            try:
+                                print("\nExposure Score : ", asset_info['info']['exposure_score'])
+                                print("\nAsset Criticality Score :", asset_info['info']['acr_score'])
+                            except:
+                                pass
                         except:
                             print("Check your API keys or your internet connection")
 
@@ -1061,7 +1084,7 @@ def lumin(acr, v, c, note):
                         if check_match == 'yes':
                                 for ips in asset['ipv4s']:
                                         lumin_list.append(ips)
-                                
+
                 else:
                         pass
             if lumin_list == []:
@@ -1211,7 +1234,8 @@ def group(plugin, pid, pname, pout):
 @click.option('--d', default='This Tag was created/updated by Navi', help="Description for your Tag")
 @click.option('--plugin', default='', help="Create a tag by plugin ID")
 @click.option('--name', default='', help="Create a Tag by the text found in the Plugin Name")
-def tag(c, v, d, plugin, name):
+@click.option('--group', default='', help="Create a Tag based on a Agent Group")
+def tag(c, v, d, plugin, name, group):
 
     if c == '':
         print("Category is required.  Please use the --c command")
@@ -1233,10 +1257,11 @@ def tag(c, v, d, plugin, name):
                     if str(x['plugin']['id']) == plugin:
                         #set IP to search with later
                         ip = x['asset']['ipv4']
+                        id = x['asset']['uuid']
 
                         #ensure the ip isn't already in the list
                         if ip not in tag_list:
-                            tag_list.append(ip)
+                            tag_list.append(id)
                             ip_list = ip_list + "," + ip
                     else:
                         pass
@@ -1249,13 +1274,15 @@ def tag(c, v, d, plugin, name):
                 if stat == 400:
                     print("Your Tag has not be created; Update functionality hasn't been added yet")
                     print(data['error'])
+                    #try to update the tag
+                    update_tag(c,v,tag_list)
                 else:
                     #pprint.pprint(data)
                     print("\nI've created your new Tag - {} : {}\n".format(c,v))
                     print("The Category UUID is : {}\n".format(data['category_uuid']))
                     print("The Value UUID is : {}\n".format(data['uuid']))
                     print("The following IPs were added to the Tag:")
-                    print(tag_list)
+                    print(ip_list[1:])
 
         except:
             print("Try again..")
@@ -1271,9 +1298,10 @@ def tag(c, v, d, plugin, name):
                     if name in plugin_name:
                         #set IP to search with later
                         ip = x['asset']['ipv4']
+                        id = x['asset']['uuid']
                         #ensure the ip isn't already in the list
                         if ip not in tag_list:
-                            tag_list.append(ip)
+                            tag_list.append(id)
                             ip_list = ip_list + "," + ip
                     else:
                         pass
@@ -1286,17 +1314,52 @@ def tag(c, v, d, plugin, name):
                 if stat == 400:
                     print("Your Tag has not be created; Update functionality hasn't been added yet")
                     print(data['error'])
-
+                    #try to update the tag
+                    update_tag(c,v,tag_list)
                 else:
 
                     print("\nI've created your new Tag - {} : {}\n".format(c,v))
                     print("The Category UUID is : {}\n".format(data['category_uuid']))
                     print("The Value UUID is : {}\n".format(data['uuid']))
                     print("The following IPs were added to the Tag:\n")
-                    print(tag_list)
+                    print(ip_list[1:])
 
         except:
             print("Try again..")
+
+    if group != '':
+        try:
+            group_data = get_data('/scanners/1/agent-groups')
+            for agent_group in group_data['groups']:
+                group_name = agent_group['name']
+                group_id = agent_group['id']
+
+                if group_name == group:
+                    data = get_data('/scanners/1/agent-groups/'+str(group_id)+'/agents')
+                    ip_list = ''
+
+                    for agent in data['agents']:
+                        ip_address = agent['ip']
+                        ip_list = ip_list + "," + ip_address
+
+                    payload = {"category_name":str(c), "value":str(group), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
+                    data2, stat = tag_post('/tags/values', payload)
+                    if stat == 400:
+                        print("Your Tag has not be created; Update functionality hasn't been added yet\n")
+                        print("Delete the current tag to update it.\n")
+                        print(data2['error'])
+
+                    else:
+                        print("\nI've created your new Tag - {} : {}\n".format(c,v))
+                        print("The Category UUID is : {}\n".format(data2['category_uuid']))
+                        print("The Value UUID is : {}\n".format(data2['uuid']))
+                        print("The following IPs were added to the Tag:")
+                        print(ip_list[1:])
+
+
+        except:
+            print("You might not have agent groups, or you are using Nessus Manager.  ")
+#pprint.pprint(group_data)
 
 @cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
