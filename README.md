@@ -74,7 +74,7 @@ There are ten core commands:
  
  There are fifteen single use commands: 
  * add - Manually Add an asset to Tenable.io
- * scan - Create and lanuch a scan
+ * scan - Create and launch a scan
  * start - Start a scan by Scan-ID
  * pause - Pause a scan by Scan-ID
  * resume - Resume a scan by Scan-ID
@@ -223,8 +223,8 @@ There are ten core commands:
     
 ### Bulk Adjust ACRs based on a Tag
    * --acr --> The new ACR value (1-10)
-   * --category --> The Tag Category to use
-   * --value --> The Tag value to use
+   * --c --> The Tag Category to use
+   * --v --> The Tag value to use
    * --note --> Justification for ACR change
    
 ### Note - ACR Exceptions?
@@ -233,7 +233,7 @@ There are ten core commands:
     Value = UPDATE
    
 ### Examples
-    Navi_pro.py --acr 10 --category "Applications" --value "Core Business" --note "Main application"
+    Navi_pro.py --acr 10 --c "Applications" --v "Core Business" --note "Main application"
 
 ### Export Asset, Agent, Consec, or Webapp Data - 'export'
 
