@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#Developed by Casey Reid
 #This code is not supported By Tenable
 import click
 import requests
@@ -11,12 +12,15 @@ import json
 import csv
 import smtplib
 import getpass
+import sqlite3
+from sqlite3 import Error
 
 requests.packages.urllib3.disable_warnings()
 
 @click.group()
 def cli():
     click.echo("Hey Listen!")
+
 
 @cli.command(help="Enter or Reset your Keys")
 def keys():
@@ -243,7 +247,7 @@ def put_data(url_mod,payload):
     #send Post request to API endpoint
     r = requests.put(url + url_mod, data=payload, headers=headers, verify=False)
     #retreive data in json format
-    return 
+    return
 
 
 def get_licensed():
@@ -252,64 +256,10 @@ def get_licensed():
     return number_of_assets
 
 
-def vuln_export():
-    # Set the payload to the maximum number of assets to be pulled at once
-    thirty_days = time.time() - 7776000#2660000
-    pay_load = {"num_assets": 5000, "filters": {"last_found": int(thirty_days)}}
-    try:
-        # request an export of the data
-        export = post_data("/vulns/export", pay_load)
-
-        # grab the export UUID
-        ex_uuid = export['export_uuid']
-        print('Requesting Vulnerability Export with ID : ' + ex_uuid)
-
-        # now check the status
-        status = get_data('/vulns/export/' + ex_uuid + '/status')
-
-        # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
-        print("Status : " + str(status["status"]))
-
-        #set a variable to True for our While loop
-        not_ready = True
-
-        #loop to check status until finished
-        while not_ready is True:
-            #Pull the status, then pause 5 seconds and ask again.
-            if status['status'] == 'PROCESSING' or 'QUEUED':
-                time.sleep(5)
-                status = get_data('/vulns/export/' + ex_uuid + '/status')
-                print("Status : " + str(status["status"]))
-
-            #Exit Loop once confirmed finished
-            if status['status'] == 'FINISHED':
-                not_ready = False
-
-            #Tell the user an error occured
-            if status['status'] == 'ERROR':
-                print("Error occurred")
-
-
-        #create an empty list to put all of our data into.
-        data = []
-
-        #loop through all of the chunks
-        for x in range(len(status['chunks_available'])):
-            chunk_data = get_data('/vulns/export/' + ex_uuid + '/chunks/' + str(x+1))
-            data.append(chunk_data)
-
-            with open('tio_vuln_data.txt', 'w') as json_outfile:
-                json.dump(chunk_data, json_outfile)
-
-                json_outfile.close()
-    except KeyError:
-        print("Well this is a bummer; you don't have permissions to download Vuln data :( ")
-
-
 def asset_export():
     # Set the payload to the maximum number of assets to be pulled at once
     thirty_days = time.time() - 7776000#2660000
-    pay_load = {"chunk_size": 5000, "filters": {"last_assessed": int(thirty_days)}}
+    pay_load = {"chunk_size": 100, "filters": {"last_assessed": int(thirty_days)}}
     try:
         # request an export of the data
         export = post_data("/assets/export", pay_load)
@@ -344,62 +294,448 @@ def asset_export():
                 print("Error occurred")
 
 
-        # create an empty list to put all of our data into.
-        data = []
 
-        # loop through all of the chunks
-        for x in range(len(status['chunks_available'])):
-            chunk_data = get_data('/assets/export/' + ex_uuid + '/chunks/' + str(x+1))
-            data.append(chunk_data)
+        #Crete a new connection to our database
+        database = r"navi.db"
+        conn = new_db_connection(database)
 
-            with open('tio_asset_data.txt', 'w') as json_outfile:
-                json.dump(chunk_data, json_outfile)
+        create_asset_table = """CREATE TABLE IF NOT EXISTS assets (
+                            ip_address text,
+                            hostname text,
+                            fqdn text,
+                            uuid text PRIMARY KEY,
+                            first_found text,
+                            last_found text, 
+                            operating_system text,
+                            mac_address text, 
+                            agent_uuid text,
+                            last_licensed_scan_date text
+                            );"""
+        create_table(conn, create_asset_table)
+        #create a table for tags
+        create_tags_table = """CREATE TABLE IF NOT EXISTS tags (
+                            tag_id integer PRIMARY KEY,
+                            asset_uuid text,
+                            asset_ip,
+                            tag_key text,
+                            tag_uuid text,
+                            tag_value text,
+                            tag_added_date text
+                            );"""
+        create_table(conn, create_tags_table)
+        tag_id = 0
+        with conn:
 
-                json_outfile.close()
+            # loop through all of the chunks
+            for x in range(len(status['chunks_available'])):
+                print("Parsing Chunk {} ...Finished".format(x+1))
+                chunk_data = get_data('/assets/export/' + ex_uuid + '/chunks/' + str(x+1))
+
+                for assets in chunk_data:
+                    #create a blank list to append asset details
+                    csv_list = []
+
+                    #Try block to ignore assets without IPs
+                    try:
+                        #Capture the first IP
+                        try:
+                            ip = assets['ipv4s'][0]
+                            csv_list.append(ip)
+                        except:
+                            csv_list.append(" ")
+                        #try block to skip if there isn't a hostname
+                        try:
+                            csv_list.append(assets['hostnames'][0])
+
+                        except:
+                            # If there is no hostname add a space so columns still line up
+                            csv_list.append(" ")
+
+                        try:
+                            csv_list.append(assets['fqdns'][0])
+                        except:
+                            csv_list.append(" ")
+
+                        try:
+                            id = assets['id']
+                            csv_list.append(id)
+                        except:
+                            csv_list.append(" ")
+                        try:
+
+                            csv_list.append(assets['first_seen'])
+                        except:
+                            csv_list.append(" ")
+                        try:
+
+                            csv_list.append(assets['last_seen'])
+                        except:
+                            csv_list.append(" ")
+                        try:
+                            csv_list.append(assets['operating_systems'][0])
+                        except:
+                            csv_list.append(" ")
+
+                        try:
+                            csv_list.append(assets['mac_addresses'][0])
+                        except:
+                            csv_list.append(" ")
+
+                        try:
+                            csv_list.append(assets['agent_uuid'])
+                        except:
+                            csv_list.append(" ")
+
+                        try:
+                            csv_list.append(assets["last_licensed_scan_date"])
+                        except:
+                            csv_list.append(" ")
+
+                        try:
+                            insert_assets(conn, csv_list)
+                        except Error as e:
+                            print(e)
+
+                        #cycle through each tag and added it to its own table
+
+                        for t in assets["tags"]:
+                            tag_list = []
+                            tag_id = tag_id +1
+                            tag_list.append(tag_id)
+                            tag_list.append(id)
+                            tag_list.append(ip)
+
+                            tag_key = t['key']
+                            tag_list.append(tag_key)
+
+                            tag_uuid = t['uuid']
+                            tag_list.append(tag_uuid)
+
+                            tag_value = t['value']
+                            tag_list.append(tag_value)
+
+                            tag_added_date = t['added_at']
+                            tag_list.append(tag_added_date)
+
+                            try:
+                                insert_tags(conn, tag_list)
+                            except Error as e:
+                                print(e)
+
+                    except IndexError:
+                        pass
+
+
     except KeyError:
         print("Well this is a bummer; you don't have permissions to download Asset data :( ")
 
 
-def plugin_by_ip(cmd,plugin):
+def vuln_export():
+    # Set the payload to the maximum number of assets to be pulled at once
+    thirty_days = time.time() - 2660000
+    pay_load = {"num_assets": 5000, "filters": {"last_found": int(thirty_days)}}
     try:
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
+        # request an export of the data
+        export = post_data("/vulns/export", pay_load)
 
-            for x in data:
-                if x['asset']['ipv4'] == cmd:
-                    if str(x['plugin']['id']) == plugin:
+        # grab the export UUID
+        ex_uuid = export['export_uuid']
+        print('Requesting Vulnerability Export with ID : ' + ex_uuid)
 
-                        print(x['output'])
-                    else:
+        # now check the status
+        status = get_data('/vulns/export/' + ex_uuid + '/status')
+
+        # status = get_data('/vulns/export/89ac18d9-d6bc-4cef-9615-2d138f1ff6d2/status')
+        print("Status : " + str(status["status"]))
+
+        # set a variable to True for our While loop
+        not_ready = True
+
+        # loop to check status until finished
+        while not_ready is True:
+            # Pull the status, then pause 5 seconds and ask again.
+            if status['status'] == 'PROCESSING' or 'QUEUED':
+                time.sleep(5)
+                status = get_data('/vulns/export/' + ex_uuid + '/status')
+                print("Status : " + str(status["status"]))
+
+            # Exit Loop once confirmed finished
+            if status['status'] == 'FINISHED':
+                not_ready = False
+
+            # Tell the user an error occured
+            if status['status'] == 'ERROR':
+                print("Error occurred")
+
+
+
+        #Crete a new connection to our database
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        drop_tables(conn)
+        create_vuln_table = """CREATE TABLE IF NOT EXISTS vulns (
+                            navi_id integer PRIMARY KEY,
+                            asset_ip text, 
+                            asset_uuid text, 
+                            asset_hostname text, 
+                            first_found text, 
+                            last_found text, 
+                            output text, 
+                            plugin_id text, 
+                            plugin_name text, 
+                            plugin_family text, 
+                            port text, 
+                            protocol text, 
+                            severity text, 
+                            scan_completed text, 
+                            scan_started text, 
+                            scan_uuid text, 
+                            schedule_id text, 
+                            state text
+                            );"""
+        create_table(conn, create_vuln_table)
+
+        with conn:
+            navi_id = 0
+            # loop through all of the chunks
+            for x in range(len(status['chunks_available'])):
+                print("Parsing Chunk {} ...Finished".format(x+1))
+
+                chunk_data = get_data('/vulns/export/' + ex_uuid + '/chunks/' + str(x+1))
+                #print(chunk_data)
+                for vulns in chunk_data:
+                    #create a blank list to append asset details
+                    list = []
+                    navi_id = navi_id + 1
+                    #Try block to ignore assets without IPs
+                    try:
+                        list.append(navi_id)
+                        try:
+                            ipv4 = vulns['asset']['ipv4']
+                            list.append(ipv4)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            asset_uuid = vulns['asset']['uuid']
+                            list.append(asset_uuid)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            hostname = vulns['asset']['hostname']
+                            list.append(hostname)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            first_found = vulns['first_found']
+                            list.append(first_found)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            last_found = vulns['last_found']
+                            list.append(last_found)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            output = vulns['output']
+                            list.append(output)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            plugin_id = vulns['plugin']['id']
+                            list.append(plugin_id)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            plugin_name = vulns['plugin']['name']
+                            list.append(plugin_name)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            plugin_family = vulns['plugin']['family']
+                            list.append(plugin_family)
+                        except:
+                            list.append(" ")
+                        try:
+                            port = vulns['port']['port']
+                            list.append(port)
+                        except:
+                            list.append(" ")
+                        try:
+                            protocol = vulns['port']['protocol']
+                            list.append(protocol)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            severity = vulns['severity']
+                            list.append(severity)
+                        except:
+                            list.append(" ")
+                        try:
+                            scan_completed = vulns['scan']['completed_at']
+                            list.append(scan_completed)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            scan_started = vulns['scan']['started_at']
+                            list.append(scan_started)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            scan_uuid = vulns['scan']['uuid']
+                            list.append(scan_uuid)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            schedule_id = vulns['scan']['schedule_id']
+                            list.append(schedule_id)
+                        except:
+                            list.append(" ")
+
+                        try:
+                            state = vulns['state']
+                            list.append(state)
+                        except:
+                            list.append(" ")
+                        try:
+                            insert_vulns(conn, list)
+                        except Error as e:
+                            print(e)
+
+                    except:
+                        print("skipped one")
                         pass
+    except KeyError:
+        print("Well this is a bummer; you don't have permissions to download Asset data :( ")
+
+
+def new_db_connection(db_file):
+    #create a connection to our database
+    conn = None
+    try:
+        #A database file will be created if one doesn't exist
+        conn = sqlite3.connect(db_file)
+        #print(sqlite3.version)
+    except Error as E:
+        print(E)
+    #return the connection for use.
+    return conn
+
+
+def create_table(conn, table_information):
+    try:
+        c = conn.cursor()
+        c.execute(table_information)
+    except Error as e:
+        print(e)
+
+
+def insert_assets(conn,assets):
+    sql = '''INSERT or IGNORE into assets(ip_address, hostname, fqdn, uuid, first_found, last_found, operating_system,
+                       mac_address, agent_uuid, last_licensed_scan_date) VALUES(?,?,?,?,?,?,?,?,?,?)'''
+    cur = conn.cursor()
+    cur.execute(sql, assets)
+    #return cur.lastrowid
+
+
+def insert_tags(conn,tags):
+    sql = '''INSERT or IGNORE into tags(tag_id, asset_uuid, asset_ip, tag_key, tag_uuid, tag_value, tag_added_date) VALUES(?,?,?,?,?,?,?)'''
+    cur = conn.cursor()
+    cur.execute(sql, tags)
+    #return cur.lastrowid
+
+
+def drop_tables(conn):
+
+    try:
+
+        drop_tag = '''DROP TABLE tags'''
+        drop_assets = '''DROP TABLE assets'''
+        drop_vulns = '''DROP TABLE vulns'''
+        cur = conn.cursor()
+        cur.execute(drop_tag)
+        cur.execute(drop_assets)
+        cur.execute(drop_vulns)
     except:
-        print("Local Cache is corrupt; pulling new data")
-        print("This will take a minute or two")
-        print("If an export doesn't start check your API keys")
-        vuln_export()
-        asset_export()
+        pass
+
+
+def insert_vulns(conn,vulns):
+    sql = '''INSERT or IGNORE into vulns(
+                            navi_id,
+                            asset_ip, 
+                            asset_uuid, 
+                            asset_hostname, 
+                            first_found, 
+                            last_found, 
+                            output, 
+                            plugin_id, 
+                            plugin_name, 
+                            plugin_family, 
+                            port, 
+                            protocol, 
+                            severity, 
+                            scan_completed, 
+                            scan_started, 
+                            scan_uuid, 
+                            schedule_id, 
+                            state
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'''
+
+    cur = conn.cursor()
+    cur.execute(sql, vulns)
+    #return cur.lastrowid
+
+
+def plugin_by_ip(ip,plugin):
+    try:
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT output from vulns where asset_ip=\"%s\" and plugin_id=%s" % (ip,plugin))
+
+                rows = cur.fetchall()
+
+
+                print(rows[0][0])
+            except:
+                pass
+
+    except Error as e:
+        print(e)
 
 
 def find_by_plugin(plugin):
     try:
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT asset_ip, asset_uuid, output from vulns where plugin_id=%s;" % (plugin))
 
-            for x in data:
-                if str(x['plugin']['id']) == plugin:
-                    print("\nIP : ", x['asset']['ipv4'])
-                    print("UUID :", x['asset']['uuid'])
-                    print("\n---Plugin---", plugin, "---Output---\n")
-                    print(x['output'])
-                    print("---Output---", plugin, "---End---")
-                else:
-                    pass
-    except:
-        print("Local Cache is corrupt; pulling new data")
-        print("This will take a minute or two")
-        print("If an export doesn't start check your API keys")
-        vuln_export()
-        asset_export()
+            rows = cur.fetchall()
+
+            for row in rows:
+                print("\nIP Address: " + row[0])
+                print("UUID : " + row[1])
+                print("\n---Plugin " + plugin + " Output---\n")
+                print(row[2])
+                print("---End plugin Ouput ---")
+    except Error as e:
+        print(e)
 
 
 def print_data(data):
@@ -478,15 +814,20 @@ def create_target_group(tg_name, tg_list):
 
 
 def csv_export():
-    with open('tio_asset_data.txt') as json_file:
-        data = json.load(json_file)
+    database = r"navi.db"
+    conn = new_db_connection(database)
+    with conn:
 
         #Create our headers - We will Add these two our list in order
         header_list = ["IP Address", "Hostname", "FQDN", "UUID", "First Found", "Last Found", "Operating System",
                        "Mac Address", "Tags", "Info", "Low", "Medium", "High", "Critical"]
+        cur = conn.cursor()
+        cur.execute("SELECT * from assets;")
+
+        data = cur.fetchall()
 
         #Crete a csv file object
-        with open('asset_data.csv', mode='w') as csv_file:
+        with open('asset_data_new.csv', mode='w') as csv_file:
             agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
 
             #write our Header information first
@@ -494,56 +835,8 @@ def csv_export():
 
             #Loop through each asset
             for assets in data:
-                #create a blank list to append asset details
-                csv_list = []
-                #Try block to ignore assets without IPs
-                try:
-                    #Capture the first IP
-                    ip = assets['ipv4s'][0]
-                    csv_list.append(ip)
 
-                    #try block to skip if there isn't a hostname
-                    try:
-                        csv_list.append(assets['hostnames'][0])
-
-                    except:
-                        # If there is no hostname add a space so columns still line up
-                        csv_list.append(" ")
-
-                    try:
-                        csv_list.append(assets['fqdns'][0])
-                    except:
-                        csv_list.append(" ")
-
-                    id = assets['id']
-                    csv_list.append(id)
-                    csv_list.append(assets['first_seen'])
-                    csv_list.append(assets['last_seen'])
-                    try:
-                        csv_list.append(assets['operating_systems'][0])
-                    except:
-                        csv_list.append(" ")
-
-                    try:
-                        csv_list.append(assets['mac_addresses'][0])
-                    except:
-                        csv_list.append(" ")
-
-                    try:
-                        csv_list.append(assets['tags'][0]['value'])
-                    except:
-                        csv_list.append(" ")
-
-                    info = get_data('/workbenches/assets/' + id + '/info')
-
-                    for counts in info['info']['counts']['vulnerabilities']['severities']:
-                        count = counts['count']
-                        csv_list.append(count)
-
-                    agent_writer.writerow(csv_list)
-
-                except IndexError:
-                    pass
+                agent_writer.writerow(assets)
 
 
 def agent_export():
@@ -570,10 +863,11 @@ def agent_export():
 
                     last_connect = agents['agents'][a]['last_connect']
                     connect_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_connect))
-
-                    last_scanned = agents['agents'][a]['last_scanned']
-                    scanned_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_scanned))
-
+                    try:
+                        last_scanned = agents['agents'][a]['last_scanned']
+                        scanned_time = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(last_scanned))
+                    except:
+                        scanned_time = "Not Yet Scanned"
                     status = agents['agents'][a]['status']
 
                     agent_writer.writerow([name, ip, platform, connect_time, scanned_time, status])
@@ -648,42 +942,37 @@ def consec_export():
 
 
 def licensed_export():
-    with open('tio_asset_data.txt') as json_file:
-        data = json.load(json_file)
+    database = r"navi.db"
+    conn = new_db_connection(database)
+    with conn:
         with open('licensed_data.csv', mode='w') as csv_file:
             agent_writer = csv.writer(csv_file, delimiter=',', quotechar='"')
             header_list = ["IP Address", "FQDN", "UUID", "Last Licensed Scan Date"]
             agent_writer.writerow(header_list)
+
+            cur = conn.cursor()
+            cur.execute("SELECT ip_address, fqdn, uuid, last_licensed_scan_date from assets where last_licensed_scan_date != ' ';")
+
+            data = cur.fetchall()
+
             for asset in data:
-                agent_id = asset['id']
-                ipv4 = asset['ipv4s'][0]
-                try:
-                    fqdn = asset['fqdns'][0]
-                except:
-                    fqdn = " "
-                try:
-                    licensed_date = asset["last_licensed_scan_date"]
-                    if "Z" in licensed_date:
-                        #print(ipv4, fqdn, agent_id, licensed_date)
-                        agent_writer.writerow([ipv4,fqdn,agent_id, licensed_date])
-                except:
-                    pass
+
+                agent_writer.writerow(asset)
 
 
 def scan_details(uuid):
     # pull the scan data
     details = get_data('/scans/' + str(uuid))
 
-    # pprint.pprint(details)
-
     print("\nThe Scanner name is : " + str(details["info"]['scanner_name']))
     print("\nThe Name of the scan is " + str(details["info"]["name"]))
-    print("The " + str(details["info"]["hostcount"]) + " host(s) that were scanned are below :\n")
+    print("\nThe Scan ID is " + str(uuid))
+    print("\nThe " + str(details["info"]["hostcount"]) + " host(s) that were scanned are below :\n")
     for x in range(len(details["hosts"])):
         print(details["hosts"][x]["hostname"])
 
-    start = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_start"]))
-    print("\nscan start : " + start)
+    start_time = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_start"]))
+    print("\nscan start : " + start_time)
     try:
         stop = time.strftime("%a, %d %b %Y %H:%M:%S ", time.localtime(details["info"]["scan_end"]))
         print("scan finish : " + stop)
@@ -734,6 +1023,7 @@ def update_tag(c,v,list):
     except:
         pass
 
+
 @cli.command(help="Find IP specific Details")
 @click.argument('ipaddr')
 @click.option('--plugin', default='', help='Find Details on a particular plugin ID')
@@ -760,6 +1050,7 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
         click.echo('----------------\n')
         plugin_by_ip(ipaddr, str(19506))
 
+
     if n:
         click.echo("\nNetstat info")
         click.echo("Established and Listening")
@@ -769,53 +1060,72 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
         click.echo("----------------")
         plugin_by_ip(ipaddr, str(14272))
 
+
     if p:
         click.echo("\nPatch Information")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(66334))
+
 
     if t:
         click.echo("\nTrace Route Info")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(10287))
 
+
     if o:
         click.echo("\nProcess Info")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(70329))
+        plugin_by_ip(ipaddr, str(110483))
+
 
     if patches:
         click.echo("\nMissing Patches")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(38153))
+        plugin_by_ip(ipaddr, str(66334))
 
         click.echo("\nLast Reboot")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(56468))
+
 
     if c:
         click.echo("\nConnection info")
         click.echo("----------------\n")
         plugin_by_ip(ipaddr, str(64582))
 
+
     if s:
-        click.echo("\nService(s) Running")
-        click.echo("----------------\n")
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * from vulns where plugin_id='22964';")
+
+            data = cur.fetchall()
+
             for plugins in data:
-                if plugins['plugin']['id'] == 22964:
-                    # pprint.pprint(plugins)
-                    output = plugins['output']
-                    port = plugins['port']['port']
-                    proto = plugins['port']['protocol']
-                    print(output, ": ", port, proto)
-                    print()
+                web = plugins[6]#output
+                wsplit = web.split("\n")
+
+                server = wsplit[0]
+                port = plugins[10]#port number
+                proto = plugins[11]#Portocol
+                asset = plugins[1]#Ip address
+
+                print(asset, ": Has a Web Server Running :")
+                print(server, "is running on: ", port,"/", proto)
+                print()
+
 
     if r:
         click.echo("Local Firewall Info")
         click.echo("----------------")
         plugin_by_ip(ipaddr, str(56310))
+        plugin_by_ip(ipaddr, str(61797))
+
 
     if software:
         try:
@@ -824,193 +1134,203 @@ def ip(ipaddr, plugin, n, p, t, o, c, s, r, patches, d, software, outbound, expl
         except IndexError:
                 print("No Software found")
 
-#this needs to be addressed
 
     if outbound:
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
-            print("IP Address", " - ", "Port", " - ", "Service")
-            print("-------------------------------")
-            for x in range(len(data)):
-                if data[x]['asset']['ipv4'] == ipaddr:
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * from vulns where plugin_id='16';")
 
-                    if data[x]['plugin']['id'] == 16:
-                        print(data[x]['output'], "   -  ", data[x]['port']['port'], "  - ", data[x]['port']['service'])
-                    else:
-                        pass
-        print()
+            data = cur.fetchall()
+            print("IP Address", " - ", "Port", " - ", "Protocol")
+            print("-------------------------------")
+            for plugins in data:
+                web = plugins[6]#output
+                wsplit = web.split("\n")
+
+                server = wsplit[0]
+                port = plugins[10]#port number
+                proto = plugins[11]#Portocol
+                asset = plugins[1]#Ip address
+                print(asset, " - ", port, "  - ", proto)
+
+                print()
+
 
     if exploit:
 
         try:
+            database = r"navi.db"
+            conn = new_db_connection(database)
+            with conn:
+                cur = conn.cursor()
+                cur.execute("SELECT uuid from assets where ip_address='" + ipaddr + "';")
 
-            N = get_data('/workbenches/assets/vulnerabilities?filter.0.quality=eq&filter.0.filter=ipv4&filter.0.value=' + ipaddr)
+                data = cur.fetchall()
+                for assets in data:
 
-            asset_id = N['assets'][0]['id']
+                    asset_id = assets[0]
 
-            print("Exploitable Details for : " + ipaddr)
-            print()
-            V = get_data(
-                            '/workbenches/assets/' + asset_id + '/vulnerabilities?filter.0.quality=eq&filter.0.filter=plugin.attributes.exploit_available&filter.0.value=True')
-            for plugins in range(len(V['vulnerabilities'])):
-                plugin = V['vulnerabilities'][plugins]['plugin_id']
-                # pprint.pprint(plugin)
+                    print("Exploitable Details for : " + ipaddr)
+                    print()
+                    V = get_data('/workbenches/assets/' + asset_id + '/vulnerabilities?filter.0.quality=eq&filter.0.filter=plugin.attributes.exploit_available&filter.0.value=True')
+                    for plugins in range(len(V['vulnerabilities'])):
+                        plugin = V['vulnerabilities'][plugins]['plugin_id']
+                        # pprint.pprint(plugin)
 
-                P = get_data('/plugins/plugin/' + str(plugin))
-                # pprint.pprint(P['attributes'])
-                print("\n----Exploit Info----")
-                print(P['name'])
-                print()
-                for attribute in range(len(P['attributes'])):
-
-                    if P['attributes'][attribute]['attribute_name'] == 'cve':
-                        cve = P['attributes'][attribute]['attribute_value']
-                        print("CVE ID : " + cve)
-
-                    if P['attributes'][attribute]['attribute_name'] == 'description':
-                        description = P['attributes'][attribute]['attribute_value']
-                        print("Description")
-                        print("------------\n")
-                        print(description)
+                        P = get_data('/plugins/plugin/' + str(plugin))
+                        # pprint.pprint(P['attributes'])
+                        print("\n----Exploit Info----")
+                        print(P['name'])
                         print()
+                        for attribute in range(len(P['attributes'])):
 
-                    if P['attributes'][attribute]['attribute_name'] == 'solution':
-                        solution = P['attributes'][attribute]['attribute_value']
-                        print("\nSolution")
-                        print("------------\n")
-                        print(solution)
-                        print()
+                            if P['attributes'][attribute]['attribute_name'] == 'cve':
+                                cve = P['attributes'][attribute]['attribute_value']
+                                print("CVE ID : " + cve)
+
+                            if P['attributes'][attribute]['attribute_name'] == 'description':
+                                description = P['attributes'][attribute]['attribute_value']
+                                print("Description")
+                                print("------------\n")
+                                print(description)
+                                print()
+
+                            if P['attributes'][attribute]['attribute_name'] == 'solution':
+                                solution = P['attributes'][attribute]['attribute_value']
+                                print("\nSolution")
+                                print("------------\n")
+                                print(solution)
+                                print()
         except:
             print("No Exploit Details found for: ",ipaddr)
 
+
     if critical:
         try:
-            N = get_data('/workbenches/assets/vulnerabilities?filter.0.quality=eq&filter.0.filter=ipv4&filter.0.value=' + ipaddr)
+            database = r"navi.db"
+            conn = new_db_connection(database)
+            with conn:
+                cur = conn.cursor()
+                cur.execute("SELECT uuid from assets where ip_address='" + ipaddr + "';")
 
-            asset_id = N['assets'][0]['id']
+                data = cur.fetchall()
+                for assets in data:
 
-            print("Critical Vulns for Ip Address :" + ipaddr)
-            print()
-            vulns = get_data("/workbenches/assets/" + asset_id + "/vulnerabilities?date_range=90")
-            for severities in range(len(vulns["vulnerabilities"])):
-                vuln_name = vulns["vulnerabilities"][severities]["plugin_name"]
-                id = vulns["vulnerabilities"][severities]["plugin_id"]
-                severity = vulns["vulnerabilities"][severities]["severity"]
-                state = vulns["vulnerabilities"][severities]["vulnerability_state"]
+                    asset_id = assets[0]
 
-                # only pull the critical vulns; critical = severity 4
-                if severity >= 4:
-                    print("Plugin Name : " + vuln_name)
-                    print("ID : " + str(id))
-                    print("Severity : Critical")
-                    print("State : " + state)
-                    print("----------------\n")
-                    plugin_by_ip(str(ipaddr), str(id))
+                    print("Critical Vulns for Ip Address :" + ipaddr)
                     print()
+                    vulns = get_data("/workbenches/assets/" + asset_id + "/vulnerabilities?date_range=90")
+                    for severities in range(len(vulns["vulnerabilities"])):
+                        vuln_name = vulns["vulnerabilities"][severities]["plugin_name"]
+                        id = vulns["vulnerabilities"][severities]["plugin_id"]
+                        severity = vulns["vulnerabilities"][severities]["severity"]
+                        state = vulns["vulnerabilities"][severities]["vulnerability_state"]
+
+                        # only pull the critical vulns; critical = severity 4
+                        if severity >= 4:
+                            print("Plugin Name : " + vuln_name)
+                            print("ID : " + str(id))
+                            print("Severity : Critical")
+                            print("State : " + state)
+                            print("----------------\n")
+                            plugin_by_ip(str(ipaddr), str(id))
+                            print()
         except:
             print("No Critical Vulnerabilities found for : ", ipaddr)
 
+
     if details:
-        with open('tio_asset_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT uuid from assets where ip_address='" + ipaddr + "';")
 
-            for x in range(len(data)):
+            data = cur.fetchall()
+            for assets in data:
+                asset_data = get_data('/workbenches/assets/'+assets[0]+'/info')
+
                 try:
+                    id = asset_data['info']['id']
 
-                    ip = data[x]['ipv4s'][0]
-                    id = data[x]['id']
-                    if ip == ipaddr:
-                        print("\nTenable ID")
+                    print("\nTenable ID")
+                    print("--------------")
+                    print(asset_data['info']['id'])
+
+                    print("\nIdentities")
+                    print("--------------")
+                    try:
+                        for n in range(len(asset_data['info']['netbios_name'])):
+                            print("Netbios - ", asset_data['info']['netbios_name'][n])
+                    except:
+                        pass
+                    try:
+                        for n in range(len(asset_data['info']['fqdns'])):
+                            print("FQDN - ", asset_data['info']['fqdns'][n])
+                    except:
+                        pass
+
+                    try:
+                        for h in range(len(asset_data['info']['hostname'])):
+                            print("Host Name -", asset_data['info']['hostname'][h])
+                    except:
+                        pass
+
+                    print("\nOperating Systems")
+                    print("--------------")
+                    try:
+                        for o in range(len(asset_data['info']['operating_system'])):
+                            print(asset_data['info']['operating_system'][o])
+                    except:
+                        pass
+
+                    try:
+                        print("\nIP Addresses:")
                         print("--------------")
-                        print(data[x]['id'])
+                        for i in range(len(asset_data['info']['ipv4'])):
+                            print(asset_data['info']['ipv4'][i])
+                    except:
+                        pass
 
-                        print("\nIdentities")
+                    try:
+                        print("\nMac Addresses:")
                         print("--------------")
-                        try:
-                            for n in range(len(data[x]['netbios_names'])):
-                                print("Netbios - ", data[x]['netbios_names'][n])
-                        except:
-                            pass
-                        try:
-                            for n in range(len(data[x]['fqdns'])):
-                                print("FQDN - ", data[x]['fqdns'][n])
-                        except:
-                            pass
-
-                        try:
-                            for h in range(len(data[x]['hostnames'])):
-                                print("Host Name -", data[x]['hostnames'][h])
-                        except:
-                            pass
-
-                        print("\nOperating Systems")
+                        for m in range(len(asset_data['info']['mac_address'])):
+                            print(asset_data['info']['mac_address'][m])
+                    except:
+                        pass
+                    try:
+                        print("\nTags:")
                         print("--------------")
+                        for i in range(len(asset_data['info']['tags'])):
+                            print(asset_data['info']['tags'][i]["tag_key"], ':', asset_data['info']['tags'][i]['tag_value'])
+                    except:
+                        pass
+
+                    try:
+                        print("\nVulnerability Counts")
+                        print("--------------")
+                        asset_info = get_data('/workbenches/assets/'+id+'/info')
+
+
+                        for vuln in asset_info['info']['counts']['vulnerabilities']['severities']:
+                            print(vuln["name"]," : ", vuln["count"])
+
                         try:
-                            for o in range(len(data[x]['operating_systems'])):
-                                print(data[x]['operating_systems'][o])
+                            print("\nExposure Score : ", asset_info['info']['exposure_score'])
+                            print("\nAsset Criticality Score :", asset_info['info']['acr_score'])
                         except:
                             pass
+                    except:
+                        print("Check your API keys or your internet connection")
 
-                        try:
-                            print("\nIP Addresses:")
-                            print("--------------")
-                            for i in range(len(data[x]['ipv4s'])):
-                                print(data[x]['ipv4s'][i])
-                        except:
-                            pass
-
-                        try:
-                            print("\nMac Addresses:")
-                            print("--------------")
-                            for m in range(len(data[x]['mac_addresses'])):
-                                print(data[x]['mac_addresses'][m])
-                        except:
-                            pass
-                        try:
-                            print("\nTags:")
-                            print("--------------")
-                            for i in range(len(data[x]['tags'])):
-                                print(data[x]['tags'][i]["key"], ':', data[x]['tags'][i]['value'])
-                        except:
-                            pass
-
-                        try:
-                            print("\nVulnerability Counts")
-                            print("--------------")
-                            asset_info = get_data('/workbenches/assets/'+id+'/info')
-
-
-                            for vuln in asset_info['info']['counts']['vulnerabilities']['severities']:
-                                print(vuln["name"]," : ", vuln["count"])
-
-                            try:
-                                print("\nExposure Score : ", asset_info['info']['exposure_score'])
-                                print("\nAsset Criticality Score :", asset_info['info']['acr_score'])
-                            except:
-                                pass
-                        except:
-                            print("Check your API keys or your internet connection")
-
-                        print("\nLast Authenticated Scan Date - ", data[x]['last_authenticated_scan_date'])
+                    print("\nLast Authenticated Scan Date - ", asset_data['info']['last_authenticated_scan_date'])
 
                 except:
                     pass
-
-        # We want the Scan template ID to do a quick re-scan.
-        with open('tio_vuln_data.txt') as vuln_file:
-            vulndata = json.load(vuln_file)
-            for z in range(len(vulndata)):
-                if vulndata[z]['plugin']['id'] == 19506:
-
-                    if vulndata[z]['asset']['ipv4'] == ipaddr:
-
-                        print("Scan Date :", vulndata[z]['scan']['completed_at'])
-                        print("Scan Template UUID", vulndata[z]['scan']['schedule_uuid'])
-                        print("-----------------------------")
-                    else:
-
-                        pass
-
 
 @cli.command(help="Export data into a CSV")
 @click.option('-assets', is_flag=True, help='Exports all Asset data into a CSV')
@@ -1038,22 +1358,30 @@ def export(assets, agents, webapp, consec, licensed):
         print("Exporting your data now. Saving consec_data.csv now...")
         print()
         consec_export()
+
     if licensed:
         print("Exporting your data now. Saving licensed_data.csv now...")
         print()
         licensed_export()
 
-def tag_Checker(tags, cat, value):
-        answer = 'no'
-        for tag in tags:
-                if cat == tag['key']:
-                        if value == tag['value']:
-                           answer = 'yes'
-                        else:
-                            pass
-                else:
-                        pass
-        return answer
+
+def tag_Checker(uuid, key, value):
+    database = r"navi.db"
+    conn = new_db_connection(database)
+    with conn:
+        cur = conn.cursor()
+        #This needs to be changed to UUID when the api gets fixed
+        cur.execute("SELECT * from tags where asset_ip='" + uuid + "' and tag_key='" + key + "' and tag_value='" + value + "';")
+
+        rows = cur.fetchall()
+
+        length = len(rows)
+        if length != 0:
+            answer ='yes'
+            return 'yes'
+        else:
+            return 'no'
+
 
 @cli.command(help="Adjust ACRs in Lumin by tag")
 @click.option('--acr', default='', help='Set the ACR')
@@ -1071,22 +1399,26 @@ def lumin(acr, v, c, note):
         exit()
 
     if int(acr) in range(1,11):
-         with open('tio_asset_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            #this needs to be changed to uuid once the api gets fixed
+            cur.execute("SELECT asset_ip from tags where tag_key='" + c + "' and tag_value='" + v + "';")
+
+            data = cur.fetchall()
+
             lumin_list = []
             for asset in data:
-                #asset_id = asset['ipv4s'][0]
-                tags = asset['tags']
-
-                check_for_no = tag_Checker(tags, "NO", "UPDATE")
+                #grab the first record, in this case the uuid
+                uuid = asset[0]
+                check_for_no = tag_Checker(uuid, "NO", "UPDATE")
                 if check_for_no == 'no':
-                        check_match = tag_Checker(tags, c, v)
-                        if check_match == 'yes':
-                                for ips in asset['ipv4s']:
-                                        lumin_list.append(ips)
-
+                    check_match = tag_Checker(uuid, c, v)
+                    if check_match == 'yes':
+                        lumin_list.append(uuid)
                 else:
-                        pass
+                    pass
             if lumin_list == []:
                 print("We did not find a Tag with that Category or Value\n")
                 print("If you think this is an error, surround your category and value in \"\"")
@@ -1127,6 +1459,7 @@ def lumin(acr, v, c, note):
                     choice.append(other)
 
                 note = note + " - Navi Generated"
+                #this needs to be changed to ID once the api is fixed
                 lumin_payload = [{"acr_score": int(acr), "reason": choice, "note": note, "asset":[{"ipv4":lumin_list}]}]
                 change_acr = lumin_post('/api/v2/assets/bulk-jobs/acr', lumin_payload)
                 if change_acr == 202:
@@ -1135,98 +1468,15 @@ def lumin(acr, v, c, note):
                     print("Check your Request.  Below is the payload I sent.\n")
                     print(lumin_payload)
 
-                #print(lumin_list)
-                #print(acr)
-                #print(choice)
-                #print(change_acr)
-                #print(lumin_payload)
+                #print(lumin_list, acr, choice, change_acr, lumin_payload)
+
     else:
         print("You can't have a score below 1 or higher than 10")
 
 
-#This will soon be deprecated in Favor of creating and using Tags
-@cli.command(help="Create Target Groups ex: Plugin ID or Text to search for")
-@click.argument('plugin')
-@click.option('-pid', is_flag=True, help='Create Target Group based a plugin ID')
-@click.option('-pname', is_flag=True, help='Create Target Group by Text found in the Plugin Name')
-@click.option('--pout', default='', help='Create a Target Group by Text found in the Plugin Output: Must supply Plugin ID first')
-def group(plugin, pid, pname, pout):
-    target_list = []
-    if pid:
+def tag_msg():
+    print("Remember to run the update command if you want to use your new tag in Navi")
 
-        try:
-            with open('tio_vuln_data.txt') as json_file:
-                data = json.load(json_file)
-
-                for x in range(len(data)):
-                    if str(data[x]['plugin']['id']) == plugin:
-                        #set IP to search with later
-                        ip = data[x]['asset']['ipv4']
-
-                        #ensure the ip isn't already in the list
-                        if ip not in target_list:
-                            target_list.append(ip)
-                    else:
-                        pass
-            #print(target_list)
-            create_target_group("Navi_by_plugin-"+str(plugin), target_list)
-        except:
-            print("Try again..")
-
-    if pname:
-        try:
-            with open('tio_vuln_data.txt') as json_file:
-                data = json.load(json_file)
-
-                for x in range(len(data)):
-                    plugin_name = data[x]['plugin']['name']
-                    if plugin in plugin_name:
-                        ip = data[x]['asset']['ipv4']
-                        #print("\nIP : ", ip)
-                        if ip not in target_list:
-                            target_list.append(ip)
-                    else:
-                        pass
-            #print(target_list)
-            create_target_group("Navi_by_Text_in_plugin_name-"+str(plugin), target_list)
-        except:
-            print("Try again")
-
-    if pout:
-        try:
-            with open('tio_vuln_data.txt') as json_file:
-                data = json.load(json_file)
-
-                for x in range(len(data)):
-                    if str(data[x]['plugin']['id']) == plugin:
-                        if pout in data[x]['output']:
-                            ip = data[x]['asset']['ipv4']
-                            #print("\nIP : ", ip)
-                            if ip not in target_list:
-                                target_list.append(ip)
-                    else:
-                        pass
-            #print(target_list)
-            create_target_group("Navi_by_Text_in_plugin_output:"+pout,target_list)
-        except:
-            print("try again")
-
-    if plugin == 'aws':
-        try:
-            query = {"date_range": "30", "filter.0.filter": "sources", "filter.0.quality": "set-hasonly",
-                     "filter.0.value": "AWS"}
-            data = special_get('/workbenches/assets', query)
-
-            for assets in data['assets']:
-
-                ip = assets['ipv4'][0]
-
-                target_list.append(ip)
-
-            #print(target_list)
-            create_target_group("Navi_by_AWS_Connector_info",target_list)
-        except:
-            print("try again")
 
 @cli.command(help="Create a Tag Category/Value Pair")
 @click.option('--c', default='', help="Create a Tag with the following Category name")
@@ -1244,32 +1494,33 @@ def tag(c, v, d, plugin, name, group):
         print("Value is required. Please use the --v command")
 
     if plugin:
-        tag_list = []
-        ip_list = ""
         try:
-            with open('tio_vuln_data.txt') as json_file:
-                plugin_data = json.load(json_file)
-                #pprint.pprint(plugin_data[0])
-                #asset_uuid = plugin_data[0]['asset']['uuid']
-                #print(asset_uuid)
+            tag_list = []
+            ip_list = ""
+            database = r"navi.db"
+            conn = new_db_connection(database)
+            with conn:
+                cur = conn.cursor()
+                cur.execute("SELECT asset_ip, asset_uuid, output from vulns where plugin_id=%s;" % (plugin))
 
+                plugin_data = cur.fetchall()
                 for x in plugin_data:
-                    if str(x['plugin']['id']) == plugin:
-                        #set IP to search with later
-                        ip = x['asset']['ipv4']
-                        id = x['asset']['uuid']
 
-                        #ensure the ip isn't already in the list
-                        if ip not in tag_list:
-                            tag_list.append(id)
-                            ip_list = ip_list + "," + ip
-                    else:
-                        pass
+                    ip = x[0]
+                    id = x[1]
+
+                    #ensure the ip isn't already in the list
+                    if ip not in tag_list:
+                        tag_list.append(id)
+                        ip_list = ip_list + "," + ip
+                else:
+                    pass
             if ip_list == '':
                 print("\nYour tag resulted in 0 Assets, therefore the tag wasn't created\n")
             else:
                 payload = {"category_name":str(c), "value":str(v), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
                 data, stat = tag_post('/tags/values', payload)
+                print(ip_list)
 
                 if stat == 400:
                     print("Your Tag has not be created; Update functionality hasn't been added yet")
@@ -1284,48 +1535,50 @@ def tag(c, v, d, plugin, name, group):
                     print("The following IPs were added to the Tag:")
                     print(ip_list[1:])
 
-        except:
-            print("Try again..")
+        except Error as e:
+            print(e)
 
     if name != '':
-        tag_list = []
-        ip_list = ""
         try:
-            with open('tio_vuln_data.txt') as json_file:
-                plugin_data = json.load(json_file)
+            tag_list = []
+            ip_list = ""
+            database = r"navi.db"
+            conn = new_db_connection(database)
+            with conn:
+                cur = conn.cursor()
+                cur.execute("SELECT asset_ip, asset_uuid, output from vulns where plugin_name LIKE '%"+name+"%';")
+
+                plugin_data = cur.fetchall()
                 for x in plugin_data:
-                    plugin_name = x['plugin']['name']
-                    if name in plugin_name:
-                        #set IP to search with later
-                        ip = x['asset']['ipv4']
-                        id = x['asset']['uuid']
-                        #ensure the ip isn't already in the list
-                        if ip not in tag_list:
-                            tag_list.append(id)
-                            ip_list = ip_list + "," + ip
+
+                    ip = x[0]
+                    id = x[1]
+                    if ip not in tag_list:
+                        tag_list.append(id)
+                        ip_list = ip_list + "," + ip
                     else:
                         pass
-            if ip_list == '':
-                print("\nYour tag resulted in 0 Assets, therefore the tag wasn't created\n")
-            else:
-                payload = {"category_name":str(c), "value":str(v), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
-                data, stat = tag_post('/tags/values', payload)
-
-                if stat == 400:
-                    print("Your Tag has not be created; Update functionality hasn't been added yet")
-                    print(data['error'])
-                    #try to update the tag
-                    update_tag(c,v,tag_list)
+                if ip_list == '':
+                    print("\nYour tag resulted in 0 Assets, therefore the tag wasn't created\n")
                 else:
+                    payload = {"category_name":str(c), "value":str(v), "description":str(d), "filters":{"asset":{"and":[{"field":"ipv4","operator":"eq","value":str(ip_list[1:])}]}}}
+                    data, stat = tag_post('/tags/values', payload)
 
-                    print("\nI've created your new Tag - {} : {}\n".format(c,v))
-                    print("The Category UUID is : {}\n".format(data['category_uuid']))
-                    print("The Value UUID is : {}\n".format(data['uuid']))
-                    print("The following IPs were added to the Tag:\n")
-                    print(ip_list[1:])
+                    if stat == 400:
+                        print("Your Tag has not be created; Update functionality hasn't been added yet")
+                        print(data['error'])
+                        #try to update the tag
+                        update_tag(c,v,tag_list)
+                    else:
 
-        except:
-            print("Try again..")
+                        print("\nI've created your new Tag - {} : {}\n".format(c,v))
+                        print("The Category UUID is : {}\n".format(data['category_uuid']))
+                        print("The Value UUID is : {}\n".format(data['uuid']))
+                        print("The following IPs were added to the Tag:\n")
+                        print(ip_list[1:])
+
+        except Error as e:
+            print(e)
 
     if group != '':
         try:
@@ -1359,7 +1612,7 @@ def tag(c, v, d, plugin, name, group):
 
         except:
             print("You might not have agent groups, or you are using Nessus Manager.  ")
-#pprint.pprint(group_data)
+
 
 @cli.command(help="Find Containers, Web Apps, Credential failures, Ghost Assets")
 @click.option('--plugin', default='', help='Find Assets where this plugin fired')
@@ -1381,71 +1634,78 @@ def find(plugin, docker, webapp, creds, time, ghost):
         find_by_plugin(str(93561))
 
     if webapp:
-        print("Searching for Web Servers found by NNM...\n")
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * from vulns where plugin_id='1442';")
+
+            data = cur.fetchall()
 
             for plugins in data:
-                if plugins['plugin']['id'] == 1442:
-                    web = plugins['output']
-                    wsplit = web.split("\n")
+                web = plugins[6]#output
+                wsplit = web.split("\n")
 
-                    server = wsplit[1]
-                    port = plugins['port']['port']
-                    proto = plugins['port']['protocol']
-                    asset = plugins['asset']['ipv4']
+                server = wsplit[1]
+                port = plugins[10]#port number
+                proto = plugins[11]#Portocol
+                asset = plugins[1]#Ip address
 
-                    print(asset, ": Has a Web Server Running :")
-                    print(server, "is running on: ", port, proto)
-                    print()
+                print(asset, ": Has a Web Server Running :")
+                print(server, "is running on: ", port,"/", proto)
+                print()
 
     if creds:
         print("I'm looking for credential issues...Please hang tight")
         find_by_plugin(str(104410))
 
     if time != '':
-        with open('tio_vuln_data.txt') as json_file:
-            data = json.load(json_file)
-
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
             print("Below are the assets that took longer than " + str(time) + " minutes to scan")
+            cur = conn.cursor()
+            cur.execute("SELECT * from vulns where plugin_id='19506';")
+
+            data = cur.fetchall()
+
             for vulns in data:
-                if vulns['plugin']['id'] == 19506:
 
-                    output = vulns['output']
-                    #pprint.pprint(vulns)
-                    # split the output by carrage return
-                    parsed_output = output.split("\n")
+                output = vulns[6]
 
-                    # grab the length so we can grab the seconds
-                    length = len(parsed_output)
+                # split the output by carrage return
+                parsed_output = output.split("\n")
 
-                    # grab the scan duration- second to the last variable
-                    duration = parsed_output[length - 2]
+                # grab the length so we can grab the seconds
+                length = len(parsed_output)
 
-                    # Split at the colon to grab the numerical value
-                    seconds = duration.split(" : ")
+                # grab the scan duration- second to the last variable
+                duration = parsed_output[length - 2]
 
-                    # split to remove "secs"
-                    number = seconds[1].split(" ")
+                # Split at the colon to grab the numerical value
+                seconds = duration.split(" : ")
 
-                    # grab the number for our minute calculation
-                    final_number = number[0]
+                # split to remove "secs"
+                number = seconds[1].split(" ")
 
-                    # convert seconds into minutes
-                    minutes = int(final_number) / 60
+                # grab the number for our minute calculation
+                final_number = number[0]
 
-                    # grab assets that match the criteria
-                    if minutes > int(time):
+                # convert seconds into minutes
+                minutes = int(final_number) / 60
 
-                        try:
-                            print("Asset IP: ", vulns['asset']['ipv4'])
-                            print("Asset UUID: ", vulns['asset']['uuid'])
-                            print("Scan started at: ", vulns['scan']['started_at'])
-                            print("Scan completed at: ", vulns['scan']['completed_at'])
-                            print("Scan UUID: ", vulns['scan']['uuid'])
-                            print()
-                        except:
-                            pass
+                # grab assets that match the criteria
+                if minutes > int(time):
+
+                    try:
+                        print("Asset IP: ", vulns[1])
+                        print("Asset UUID: ", vulns[2])
+                        print("Scan started at: ", vulns[14])
+                        print("Scan completed at: ", vulns[13])
+                        print("Scan UUID: ", vulns[15])
+                        print()
+                    except:
+                        pass
 
     if ghost:
         try:
@@ -1825,6 +2085,8 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
         try:
             data = get_data("/server/properties")
             session_data = get_data("/session")
+            #pprint.pprint(data)
+
             print("\nTenable IO Information")
             print("-----------------------")
             print("Container ID : ", session_data["container_id"])
@@ -1836,9 +2098,9 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             print("\nLicense information")
             print("--------------------")
             print("Licensed Assets : ", get_licensed())
-            print("Agents Used : ", data["license"]["agents_used"])
+            print("Agents Used : ", data["license"]["agents"])
             print("Expiration Date : ", data["license"]["expiration_date"])
-            print("Scanners Used : ", data["license"]["scanners_used"])
+            print("Scanners Used : ", data["license"]["scanners"])
             print("Users : ", data["license"]["users"])
             print("\nEnabled Apps")
             print("---------")
@@ -1853,6 +2115,7 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
                     pass
                 print("Mode: ", data["license"]["apps"][key]["mode"])
                 print()
+
         except:
             error_msg()
 
@@ -1916,25 +2179,27 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
             error_msg()
 
     if licensed:
-        print("Licensed Count : ", get_licensed())
+        print("\nLicensed Count : ", get_licensed())
         print()
-        with open('tio_asset_data.txt') as json_file:
-            data = json.load(json_file)
+        database = r"navi.db"
+        conn = new_db_connection(database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("SELECT ip_address, fqdn, last_licensed_scan_date from assets where last_licensed_scan_date !=' ';")
+            data = cur.fetchall()
+
             print("IP Address".ljust(15), "Full Qualified Domain Name".ljust(50), "Licensed Date")
             print("-".ljust(91,"-"))
             print()
             for asset in data:
-                ipv4 = asset['ipv4s'][0]
-                try:
-                    fqdn = asset['fqdns'][0]
-                except:
-                    fqdn = " "
-                try:
-                    licensed_date = asset["last_licensed_scan_date"]
-                    if "Z" in licensed_date:
-                        print(str(ipv4).ljust(15), str(fqdn).ljust(50),licensed_date)
-                except:
-                    pass
+                ipv4 = asset[0]
+
+                fqdn = asset[1]
+
+                licensed_date = asset[2]
+
+                print(str(ipv4).ljust(15), str(fqdn).ljust(50),licensed_date)
+        print()
 
     if tags:
         data = get_data('/tags/values')
@@ -1961,6 +2226,7 @@ def list(scanners, users, exclusions, containers, logs, running, scans, nnm, ass
 
             print(str(category_name).ljust(25), " : ", str(category_uuid).ljust(25))
         print()
+
 
 @cli.command(help="Quickly Scan a Target")
 @click.argument('targets')

@@ -3,11 +3,10 @@ A command-line tool which leverages the Tenable.io API to reduce the time it tak
 in Cyber Exposure or Vulnerability Management. *** This is not Supported by Tenable ***
 
 ### Important Note
-Navi Pro will download the entire data-set locally after API keys are 
+Navi Pro will download the entire data-set(90 days) locally after API keys are 
 entered and commands are run! To download Vuln and Asset data you have to be an Administrator in Tenable.io.
 
-All Vulns and All Assets are downloaded into two txt files in json format:
- **tio_asset_data.txt** and **tio_vuln_data.txt**.  
+All Vulns and All Assets are downloaded into a SQLLITE database named navi.db.  
  
  Most of the API calls nessessary to make Navi work require access to
  your all of the available data.  Tenable.io has a 5000 record limit so Navi_pro.py utilizes the Export API.
@@ -22,7 +21,7 @@ All Vulns and All Assets are downloaded into two txt files in json format:
 
     docker pull silentninja/navi_pro
   
-    docker run -it silentninja/navi_pro:latest /bin/bash 
+    docker run -it -p 8000:8000 silentninja/navi_pro:latest /bin/bash 
 
     Navi_pro.py keys
     
@@ -70,7 +69,8 @@ There are ten core commands:
  * export - Export Agent or Asset data into a CSV
  * delete - Delete an object by it's ID
  * mail - Mail a report 
- * Tag - Create a Category/Value Pair
+ * tag - Create a Category/Value Pair
+ * lumin - Bulk adjust ACRs based on a tag
  
  There are fifteen single use commands: 
  * add - Manually Add an asset to Tenable.io
@@ -88,6 +88,7 @@ There are ten core commands:
  * http - Run an http server to extract files from the container
  * listen - Run a netcat listener to receive a single file
  * smtp - Enter or update your SMTP information
+ 
  
 
 ### Explore the Tenable.io API - 'api'
@@ -162,7 +163,7 @@ There are ten core commands:
 
     Navi_pro.py report --docker 48b5124b2768
 
-    Navi_pro.py report -comply 48b5124b2768
+    Navi_pro.py report --comply 48b5124b2768
 
     Navi_pro.py report --summary 13
 
@@ -209,7 +210,7 @@ There are ten core commands:
 
     Navi_pro.py group aws
 
-### Tag assets by Plugin Name, or Plugin ID
+### Tag assets by Plugin Name, or Plugin ID - 'tag'
    * --c --> Create a Tag with this Category - Required
    * --v --> Create a Tag with this Value - Required
    * --d --> Create a description for your Tag - Optional (TEXT"
@@ -221,7 +222,7 @@ There are ten core commands:
     Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
     Navi_pro.py tag --c "Agent Group" --v "Linux Agents" --group "Linux"
     
-### Bulk Adjust ACRs based on a Tag
+### Bulk Adjust ACRs based on a Tag - 'lumin'
    * --acr --> The new ACR value (1-10)
    * --c --> The Tag Category to use
    * --v --> The Tag value to use
@@ -233,7 +234,7 @@ There are ten core commands:
     Value = UPDATE
    
 ### Examples
-    Navi_pro.py --acr 10 --c "Applications" --v "Core Business" --note "Main application"
+    Navi_pro.py lumin --acr 10 --c "Applications" --v "Core Business" --note "Main application"
 
 ### Export Asset, Agent, Consec, or Webapp Data - 'export'
 
