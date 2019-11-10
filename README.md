@@ -4,14 +4,14 @@ in Cyber Exposure or Vulnerability Management. *** This is not Supported by Tena
 
 ### Important Note
 Navi Pro will download the entire data-set(90 days) locally after API keys are 
-entered and commands are run! To download Vuln and Asset data you have to be an Administrator in Tenable.io.
+entered and the update command is used! To download Vuln and Asset data you have to be an Administrator in Tenable.io.
 
 All Vulns and All Assets are downloaded into a SQLLITE database named navi.db.  
  
  Most of the API calls nessessary to make Navi work require access to
  your all of the available data.  Tenable.io has a 5000 record limit so Navi_pro.py utilizes the Export API.
  
- The data will not be updated until you run the update command.
+ The data will not be updated until you run the update command.  Keep this in mind when adding elements to Tenable.io like Tags.
  
     Navi_pro.py update
   
@@ -49,7 +49,7 @@ To extract data from the container you need to run an http server.  Use the belo
 
     Navi_pro.py http
 
- * Navigate to the website: http://127.0.0.1:8000
+ * Navigate to the website: http://0.0.0.0:8000
  * Simply download the item you want by clicking on it.
 
 ## Usage
@@ -59,7 +59,7 @@ Before you begin you need the Keys! The program will continue to error out witho
 
 Each command has two parts: the Command and the Option/Request. Double-Dash(--), commands expect a text value. Single-Dash commands do not have an expected input.  
 
-There are ten core commands: 
+There are thirteen core commands: 
  * api - query api endpoints
  * ip - find details on Specific IPs
  * find - Find information: credential failures, containers, etc
@@ -71,9 +71,10 @@ There are ten core commands:
  * mail - Mail a report 
  * tag - Create a Category/Value Pair
  * lumin - Bulk adjust ACRs based on a tag
+ * add - Manually Add an asset to Tenable.io or a list of assets via CSV
+ * delete - Delete a scan by Scan ID
  
- There are fifteen single use commands: 
- * add - Manually Add an asset to Tenable.io
+ There are thirteen single use commands: 
  * scan - Create and launch a scan
  * start - Start a scan by Scan-ID
  * pause - Pause a scan by Scan-ID
@@ -81,7 +82,6 @@ There are ten core commands:
  * stop - Stop a scan by Scan-ID
  * spider - Create a WebApp scan for every URL in a CSV
  * update - Update local Export Vuln and Asset data.
- * delete - Delete a scan by Scan ID
  * status - Get the latest status by Scan ID
  * mac - Get the manufacture by Mac Address
  * keys - Add or update your keys
@@ -107,20 +107,20 @@ There are ten core commands:
   
 ### IP address queries - 'ip'
   * --plugin TEXT --> Find Details on a particular plugin ID
-  * -n --> Netstat Established and Listening and Open Ports
-  * -p --> Patch Information
-  * -t --> Trace Route
-  * -o --> Process Information
-  * -c --> Connection Information
-  * -s --> Services Running
-  * -r --> Local Firewall Rules
-  * -d --> Scan Detail: 19506 plugin output
-  * -patches --> Missing Patches
-  * -software --> Find software installed on Unix of windows hosts
-  * -outbound --> outbound connections found by nnm
-  * -exploit --> Display exploitable vulnerabilities
-  * -critical --> Display critical vulnerabilities
-  * -details --> Details on an Asset: IP, UUID, Vulns, etc
+  * -n -->            Netstat Established and Listening and Open Ports
+  * -p -->            Patch Information
+  * -t -->            Trace Route
+  * -o -->            Process Information
+  * -c -->            Connection Information
+  * -s -->            Services Running
+  * -r -->            Local Firewall Rules
+  * -d -->            Scan Detail: 19506 plugin output
+  * -patches -->      Missing Patches
+  * -software -->     Find software installed on Unix of windows hosts
+  * -outbound -->     Display outbound connections found by NNM
+  * -exploit -->      Display exploitable vulnerabilities
+  * -critical -->     Display critical vulnerabilities
+  * -details -->      Details on an Asset: IP, UUID, Vulns, etc
 
 ### Examples
 
@@ -132,11 +132,11 @@ There are ten core commands:
 
 ### Find information - 'find'
   * --plugin TEXT --> Find Assets where this plugin fired
-  * -docker --> Find Running Docker Containers
-  * -webapp --> Find Web Servers running
-  * -creds  --> Find Credential failures
-  * --time TEXT --> Find Assets where the scan duration is over X mins
-  * -ghost --> Find Assets found by a Connector and not scanned by Nessus(AWS ONLY)
+  * -docker -->       Find Running Docker Containers
+  * -webapp -->       Find Web Servers running
+  * -creds  -->       Find Credential failures
+  * --time TEXT -->   Find Assets where the scan duration is over X mins
+  * -ghost -->        Find Assets found by a Connector and not scanned by Nessus(AWS ONLY)
 
 ### Examples
 
@@ -149,12 +149,12 @@ There are ten core commands:
     Navi_pro.py find --time 10
 
 ### Reports - Information - 'report'
-  * -latest -->  Report the Last Scan Details
+  * -latest -->          Report the Last Scan Details
   * --container TEXT --> Report Vulns of CVSS 7 or above by Container ID.
-  * --docker TEXT --> Report Vulns of CVSS 7 or above by Docker ID
-  * --comply TEXT --> Check to see if your container complies with your Policy
-  * --details TEXT --> Report Scan Details including Vulnerability Counts by Scan ID
-  * --summary TEXT --> Report Scan Summary by Scan ID
+  * --docker TEXT -->    Report Vulns of CVSS 7 or above by Docker ID
+  * --comply TEXT -->    Check to see if your container complies with your Policy
+  * --details TEXT -->   Report Scan Details including Vulnerability Counts by Scan ID
+  * --summary TEXT -->   Report Scan Summary by Scan ID
 
 ### Examples
     Navi_pro.py report -latest
@@ -168,24 +168,24 @@ There are ten core commands:
     Navi_pro.py report --summary 13
 
 ### List - Common Information - 'list'
-  * -scanners --> List all of the Scanners
-  * -users --> List all of the Users
+  * -scanners -->   List all of the Scanners
+  * -users -->      List all of the Users
   * -exclusions --> List all Exclusions
   * -containers --> List all containers and their Vulnerability  Scores
-  * -logs --> List The actor and the action in the log file
-  * -running --> List the running Scans
-  * -scans --> List all Scans
-  * -nnm --> Nessus Network Monitor assets and their vulnerability scores
-  * -assets --> Assets found in the last 30 days
-  * -policies --> Scan Policies
+  * -logs -->       List The actor and the action in the log file
+  * -running -->    List the running Scans
+  * -scans -->      List all Scans
+  * -nnm -->        Nessus Network Monitor assets and their vulnerability scores
+  * -assets -->     Assets found in the last 30 days
+  * -policies -->   Scan Policies
   * -connectors --> Displays information about the Connectors
-  * -agroup --> Displays information about Access Groups
-  * -status --> Displays Tenable.io License and Site information
-  * -agents --> Displays information on Agents
-  * -webapp --> Displays information on Web app Scans
-  * -tgroup --> Displays information about Target Groups
-  * -licensed --> Displays All of your Licensed assets
-  * -tags --> Displays Tag Categories, Values and Value UUID
+  * -agroup -->     Displays information about Access Groups
+  * -status -->     Displays Tenable.io License and Site information
+  * -agents -->     Displays information on Agents
+  * -webapp -->     Displays information on Web app Scans
+  * -tgroup -->     Displays information about Target Groups
+  * -licensed -->   Displays All of your Licensed assets
+  * -tags -->       Displays Tag Categories, Values and Value UUID
   * -categories --> Displays Tag Categories and the Category UUID
   
 ### Examples
@@ -195,37 +195,36 @@ There are ten core commands:
 
     Navi_pro.py list -nnm
 
-### Group Assets together - 'group'
-  * -pid --> Create Target Group based a plugin ID
-  * -pname --> Create Target Group by Text found in the Plugin Name
-  * -pout TEXT --> Create a Target Group by Text found in the Plugin Output: Must supply Plugin ID
-  * -aws --> Create a target group by AWS assets found by a connector but not scanned.
+### Add assets manually or via a CSV file - 'add'
+To add an asset you need an IP address; Everything else is optional.
+If you are going to use a CSV file you need to structure it in this order: IP, Mac, Hostname, FQDN.
+This is the order the information is parsed so getting it incorrect will cause errors.
 
-### Examples
-    Navi_pro.py group 19506 -pid
-
-    Navi_pro.py group Docker -pname
-
-    Navi_pro.py group 20811 -pout Wireshark
-
-    Navi_pro.py group aws
-
+   * --ip TEXT        IP address(s) of new asset
+   * --mac TEXT       Mac Address of new asset
+   * --netbios TEXT   NetBios of new asset
+   * --fqdn TEXT      FQDN of new asset
+   * --hostname TEXT  Hostname of new asset
+   * --list - TEXT    Import all assets in the CSV file
+   * --source - TEXT  Add the Source 
+   
 ### Tag assets by Plugin Name, or Plugin ID - 'tag'
-   * --c --> Create a Tag with this Category - Required
-   * --v --> Create a Tag with this Value - Required
-   * --d --> Create a description for your Tag - Optional (TEXT"
+   * --c -->      Create a Tag with this Category - Required
+   * --v -->      Create a Tag with this Value - Required
+   * --d -->      Create a description for your Tag - Optional (TEXT"
    * --plugin --> Define a Tag by a plugin ID - Optional (TEXT)
-   * --name --> Define a tag by text found in a plugin Name - Optional (TEXT)
-   * --group --> Defina a tag by a Agent Group Name - Optional (TEXT)
+   * --name -->   Define a tag by text found in a plugin Name - Optional (TEXT)
+   * --group -->  Defina a tag by a Agent Group Name - Optional (TEXT)
+   
 ### Examples
     Navi_pro.py tag --c "My Category" --v "My Value" --d "My description" --plugin 93561
     Navi_pro.py tag --c "Application Vulns" --v "Java vulns" --name java
     Navi_pro.py tag --c "Agent Group" --v "Linux Agents" --group "Linux"
     
 ### Bulk Adjust ACRs based on a Tag - 'lumin'
-   * --acr --> The new ACR value (1-10)
-   * --c --> The Tag Category to use
-   * --v --> The Tag value to use
+   * --acr -->  The new ACR value (1-10)
+   * --c -->    The Tag Category to use
+   * --v -->    The Tag value to use
    * --note --> Justification for ACR change
    
 ### Note - ACR Exceptions?
@@ -238,10 +237,10 @@ There are ten core commands:
 
 ### Export Asset, Agent, Consec, or Webapp Data - 'export'
 
-   * -assets --> Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
-   * -agents --> Export Asset data into CSV: IP, Last Connect, Last scanned, Status
-   * -webapp --> Export Web applications into a CSV: FQDN, Critical, High, Medium, Low
-   * -consec --> Export Container Security summary info into a CSV.
+   * -assets -->   Export Assets data into CSV: IP, Hostname, FQDN, UUID, exposure, etc
+   * -agents -->   Export Asset data into CSV: IP, Last Connect, Last scanned, Status
+   * -webapp -->   Export Web applications into a CSV: FQDN, Critical, High, Medium, Low
+   * -consec -->   Export Container Security summary info into a CSV.
    * -licensed --> Export a List of all Licensed Assets into a CSV.
    
 ### Examples
@@ -251,14 +250,14 @@ There are ten core commands:
     Navi_pro.py export -agents -assets -webapp -consec -licensed
 
 ### Delete an Object by an ID
-* scan - Delete a scan by ID
-* agroup - Delete an Access group
-* tgroup - Delete a Target Group
-* policy - Delete a Policy
-* asset - Delete an asset
+* scan -      Delete a scan by ID
+* agroup -    Delete an Access group
+* tgroup -    Delete a Target Group
+* policy -    Delete a Policy
+* asset -     Delete an asset
 * container - Delete a container by container ID
-* tag - Delete a Tag value by Value UUID
-* category - Delete a Tag category by the Category UUID
+* tag -       Delete a Tag value by Value UUID
+* category -  Delete a Tag category by the Category UUID
 
 ### Examples
 

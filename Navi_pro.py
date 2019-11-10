@@ -2440,13 +2440,55 @@ def status(scan_id):
         error_msg()
 
 
+def add_helper(file,source):
+    try:
+
+        with open(file, 'r', newline='') as new_file:
+            add_assets = csv.reader(new_file)
+            print(add_assets)
+
+            for row in add_assets:
+                asset = {}
+                ipv4 = []
+                macs = []
+                fqdns = []
+                hostnames = []
+
+                ipv4.append((row[0]))
+                asset["ip_address"] = ipv4
+
+                macs.append(row[1])
+                asset["mac_address"] = macs
+
+                hostnames.append(row[2])
+                asset["hostname"] =hostnames
+
+                fqdns.append(row[3])
+                asset["fqdn"] =fqdns
+
+                #create Payload
+                payload ={"assets":[asset],"source":source}
+
+                print("Added the following Data : \n")
+                print(payload)
+                print()
+
+                #request Import Job
+                data = post_data('/import/assets', payload)
+                print("Your Import ID is : ", data['asset_import_job_uuid'])
+    except Error as e:
+        print(e)
+
+
 @cli.command(help="Manually add an asset to Tenable.io")
 @click.option('--ip', default='', help="IP address(s) of new asset")
 @click.option('--mac', default='', help="Mac Address of new asset")
 @click.option('--netbios', default='', help="NetBios of new asset")
 @click.option('--fqdn', default='', help='FQDN of new asset')
 @click.option('--hostname', default='', help="Hostname of new asset")
-def add(ip, mac, netbios, fqdn, hostname):
+@click.option('--list', default='', help="Provide a CSV file in this order: IP, MAC, FQDN, Hostname. Leave fields blank if N/A")
+@click.option('--source', default='Navi', help="Provide the source of the information")
+def add(ip, mac, netbios, fqdn, hostname, list, source):
     try:
         asset = {}
         ipv4 = []
@@ -2472,8 +2514,12 @@ def add(ip, mac, netbios, fqdn, hostname):
             hostnames.append(hostname)
             asset["hostname"] =hostnames
 
+        if list:
+           add_helper(list)
+
+
         #create Payload
-        payload ={"assets":[asset],"source":"navi"}
+        payload ={"assets":[asset],"source":source}
 
         print("Added the following Data : \n")
         print(payload)
@@ -2482,7 +2528,8 @@ def add(ip, mac, netbios, fqdn, hostname):
         #request Import Job
         data = post_data('/import/assets', payload)
         print("Your Import ID is : ", data['asset_import_job_uuid'])
-    except:
+    except Error as e:
+        print(e)
         error_msg()
 
 
@@ -2652,7 +2699,7 @@ def http():
 def listen():
     try:
         print("I'm opening a connection so you can send a file into the container")
-        print("use this command on your pc to send data to the connector: nc 127.0.0.1 8000 < \"yourfile.csv\"")
+        print("use this command on your pc to send data to the connector: nc 0.0.0.0 8000 < \"yourfile.csv\"")
         os.system("nc -l -p 8000 > newfile.csv")
     except:
         print("This command uses netcat and is only meant for Navi running in a docker container")
